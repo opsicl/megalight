@@ -1,1 +1,1 @@
-# megalight
+# Arduino lights/shutters/fans controller
