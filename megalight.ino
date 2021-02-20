@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <string.h>
+#include <avr/wdt.h>
 #include "declarations.h"
 #include "buttons.h"
 #include "lights.h"
@@ -99,6 +100,8 @@ void setup(void) {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
   }
+  //enable the hardware watchdog at 2s
+  wdt_enable(WDTO_2S);
 
   Serial.begin(9600); //Begin serial communication
   Serial.println(F("Arduino Lights/Shutters controller")); //Print a message
@@ -175,7 +178,7 @@ void applystoredconfig() {
 
 boolean reconnect() {
   Ethernet.init();
-  delay(100);
+  //delay(100);
   if (Ethernet.begin(mac) != 0) {
     //Serial.println(Ethernet.localIP());
     mclient.setServer(server, 1883);
@@ -297,13 +300,14 @@ int pltoint(byte* payload, unsigned int length) {
 }
 
 
-void loop(void)
-{ 
+void loop(void) { 
+
+  wdt_reset();
 
   Ethernet.maintain();
   if (!mclient.connected()) {
     //attempt to reconnect to mqtt every 20s
-    if (millis() - lastReconnectAttempt > 20000) {
+    if (millis() - lastReconnectAttempt > 20000 or lastReconnectAttempt == 0) {
       Serial.println(F("MQTT not connected"));
       lastReconnectAttempt = millis();
       if (reconnect()) {

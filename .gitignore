@@ -1,1 +1,3 @@
 /build-mega-atmega2560
+*.swp
+*.swo
