@@ -14,12 +14,12 @@
 
 
 byte id = 0x98;
-char idString[] = "98";
+String idString = "98";
 
 byte mac[] = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, id };
 IPAddress server(192,168,91,215);
 
-char* metricsTopic = "metrics/";
+String metricsTopic = "metrics/";
 
 
 EthernetClient ethClient;
@@ -108,7 +108,7 @@ void setup(void) {
 
   
 
-  strcat(metricsTopic, idString);
+  metricsTopic += idString;
   Serial.println(F("Setup done"));
   //request config on startup
 }
@@ -148,6 +148,7 @@ void configure(byte* payload) {
   }
 
   conf.nrbutt = jconf["b"].size();
+  Serial.println(conf.nrbutt);
   for (byte i = 0; i < conf.nrbutt; i++) {
 
     conf.bmaps[i].pin = jconf["b"][i]["p"];
@@ -181,20 +182,22 @@ boolean reconnect() {
   //delay(100);
   if (Ethernet.begin(mac) != 0) {
     //Serial.println(Ethernet.localIP());
+    mclient.setBufferSize(1024);
     mclient.setServer(server, 1883);
     mclient.setCallback(callback);
   }
-  if (mclient.connect("arduinoClient2")) {
-    // ... and resubscribe
+  String client = "arduinoClient_" + idString;
+  if (mclient.connect(client.c_str())) {
 
+    // ... and resubscribe
     char topic[20];
-    snprintf(topic, sizeof topic, "%s/lights/#", idString );
+    snprintf(topic, sizeof topic, "%s/lights/#", idString.c_str() );
     mclient.subscribe(topic);
-    snprintf(topic, sizeof topic, "%s/shutters/#", idString );
+    snprintf(topic, sizeof topic, "%s/shutters/#", idString.c_str() );
     mclient.subscribe(topic);
-    snprintf(topic, sizeof topic, "%s/fans/#", idString );
+    snprintf(topic, sizeof topic, "%s/fans/#", idString.c_str() );
     mclient.subscribe(topic);
-    snprintf(topic, sizeof topic, "%s/setconfig", idString );
+    snprintf(topic, sizeof topic, "%s/setconfig", idString.c_str() );
     mclient.subscribe(topic);
     Serial.println(F("Connected to mqtt"));
   }
@@ -206,9 +209,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   //Serial.print(topic);
   //Serial.print("] ");
   //Serial.println(length);
-  for (unsigned int i=0;i<length;i++) {
-    //Serial.print((char)payload[i]);
-  }
+  //for (unsigned int i=0;i<length;i++) {
+  //  Serial.print((char)payload[i]);
+  //}
   if (String(topic).substring(3,10) == "lights/") {
     //Serial.print(F("got light "));
 
@@ -312,7 +315,7 @@ void loop(void) {
       lastReconnectAttempt = millis();
       if (reconnect()) {
         lastReconnectAttempt = 0;
-        mclient.publish("configreq",idString);
+        mclient.publish("configreq",idString.c_str());
         configTime = millis();
       }
     }
@@ -328,18 +331,24 @@ void loop(void) {
       //applystoredconfig();
       //if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0) {
         //Serial.println("publishing configreq");
-        mclient.publish("configreq",idString);
+        mclient.publish("configreq",idString.c_str());
         configTime = millis();
       }
   }
+  
 
   else {
+    //Serial.println("here1");
     if (not pinsset) {
       setpins();
     }
+    //Serial.println("here2");
     handlebuttons();
+    //Serial.println("here3");
     applyintensities();
+    //Serial.println("here4");
     controlshutters();
+    //Serial.println("here5");
     // Print debug info evrey 10s
     //if (millis() - lastVarDump > 10000) {
     //  Serial.print("shutter 0 current state ");
@@ -359,7 +368,7 @@ void loop(void) {
     //mclient.publish(strcat("metrics/", idString), "test!");
     //Serial.println(metricsTopic);
     char topic[20];
-    snprintf(topic, sizeof topic, "%s/freeram", metricsTopic );
+    snprintf(topic, sizeof topic, "%s/freeram", metricsTopic.c_str() );
     char value[5];
     snprintf(value, sizeof value, "%i", freeMemory());
 

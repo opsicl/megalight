@@ -6,6 +6,8 @@
 #include "fans.h"
 
 void handlebuttons() {
+  //Serial.print("buttons ");
+  //Serial.println(conf.nrbutt);
   for (byte butt = 0; butt < conf.nrbutt; butt++) {
     handlebutton(butt);
   }
@@ -13,6 +15,8 @@ void handlebuttons() {
 
 void handlebutton(byte butt) {
 
+  //Serial.print("here");
+  //Serial.println(butt);
   int press = digitalRead(conf.bmaps[butt].pin);
   if (press == HIGH) {
     if (lastpress[butt] == false) {
