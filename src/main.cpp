@@ -12,8 +12,8 @@
 #include "MemoryFree.h"
 
 
-byte id = 0x99;
-char idString[] = "99";
+byte id = 0x98;
+char idString[] = "98";
 
 byte mac[] = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, id };
 IPAddress server(192,168,91,215);
@@ -226,7 +226,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
 
-  if (String(topic) == "99/setconfig") {
+  if (String(topic) == "98/setconfig") {
     configure(payload);
   }
 
