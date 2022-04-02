@@ -1,1 +1,7 @@
-/build-mega-atmega2560
+.pio
+.clang_complete
+.gcc-flags.json
+.ccls
+.swo
+.swp
+config/
