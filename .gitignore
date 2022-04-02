@@ -3,3 +3,5 @@
 .gcc-flags.json
 .ccls
 config/
+*.swp
+*.swo
