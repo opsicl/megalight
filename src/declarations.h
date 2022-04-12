@@ -1,3 +1,4 @@
+#include <Adafruit_PWMServoDriver.h>
 // Update these with values suitable for your network.
 int pltoint(byte* payload, unsigned int length);
 struct light {
@@ -75,5 +76,6 @@ extern bool fanison[15];
 extern bool fanonhi[15];
 extern long configTime;
 extern bool pinsset;
+extern Adafruit_PWMServoDriver pwm[];
 
 

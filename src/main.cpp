@@ -11,6 +11,8 @@
 #include "shutters.h"
 #include "fans.h"
 #include "MemoryFree.h"
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 
 
 byte id = 0x98;
@@ -21,6 +23,7 @@ IPAddress server(192,168,91,215);
 
 String metricsTopic = "metrics/";
 
+Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
 
 EthernetClient ethClient;
 PubSubClient mclient(ethClient);
@@ -69,42 +72,48 @@ void callback(char* topic, byte* payload, unsigned int length);
 
 void setup(void) {
   // change the timers frequency to try to avoid flickering
-  int myEraser = 7;
-  TCCR1B &= ~myEraser;
-  TCCR2B &= ~myEraser;
-  TCCR3B &= ~myEraser;
-  TCCR4B &= ~myEraser;
+  //int myEraser = 7;
+  //TCCR1B &= ~myEraser;
+  //TCCR2B &= ~myEraser;
+  //TCCR3B &= ~myEraser;
+  //TCCR4B &= ~myEraser;
 
-  // frequencyes:
-  //  prescaler = 1 ---> PWM frequency is 31000 Hz
-  //  prescaler = 2 ---> PWM frequency is 4000 Hz
-  //  prescaler = 3 ---> PWM frequency is 490 Hz (default value)
-  //  prescaler = 4 ---> PWM frequency is 120 Hz
-  //  prescaler = 5 ---> PWM frequency is 30 Hz
-  //  prescaler = 6 ---> PWM frequency is <20 Hz
-  int myPrescaler = 2;
+  //// frequencyes:
+  ////  prescaler = 1 ---> PWM frequency is 31000 Hz
+  ////  prescaler = 2 ---> PWM frequency is 4000 Hz
+  ////  prescaler = 3 ---> PWM frequency is 490 Hz (default value)
+  ////  prescaler = 4 ---> PWM frequency is 120 Hz
+  ////  prescaler = 5 ---> PWM frequency is 30 Hz
+  ////  prescaler = 6 ---> PWM frequency is <20 Hz
+  //int myPrescaler = 2;
 
-  //TCCR0B will not be touched as it is used as main timer for millis() and other internals
-  //pins 13 and 4 should not be used as light controllers for this reason
-  TCCR1B |= myPrescaler; // pins 11,12
-  TCCR2B |= myPrescaler; // pins 9,10
-  TCCR3B |= myPrescaler; // pins 2,3,5
-  TCCR4B |= myPrescaler; // pins 6,7,8
+  ////TCCR0B will not be touched as it is used as main timer for millis() and other internals
+  ////pins 13 and 4 should not be used as light controllers for this reason
+  //TCCR1B |= myPrescaler; // pins 11,12
+  //TCCR2B |= myPrescaler; // pins 9,10
+  //TCCR3B |= myPrescaler; // pins 2,3,5
+  //TCCR4B |= myPrescaler; // pins 6,7,8
+  Serial.begin(9600); //Begin serial communication
+  Serial.println(F("Arduino Lights/Shutters controller")); //Print a message
 
 
-  // Pins 10,4, 50, 51, and 52 are used by the ethernet shield, avoid trying to use them for anything else
-  // The 11 PWM usable pins on the mega are: 2,3,5,6,7,8,9,11,12,45,46
+  for (byte i=0; i < 2; i++) {
+    Serial.println(i);
+    pwm[i].begin();
+    pwm[i].setPWMFreq(1600);
+  }
 
-  // set all pins low for safety
+
+  //// Pins 10,4, 50, 51, and 52 are used by the ethernet shield, avoid trying to use them for anything else
+  //// The 11 PWM usable pins on the mega are: 2,3,5,6,7,8,9,11,12,45,46
+
+  //// set all pins low for safety
   for (byte pin = 0; pin <= 54; pin++) {
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
   }
   //enable the hardware watchdog at 2s
   wdt_enable(WDTO_2S);
-
-  Serial.begin(9600); //Begin serial communication
-  Serial.println(F("Arduino Lights/Shutters controller")); //Print a message
 
   
 
@@ -148,7 +157,7 @@ void configure(byte* payload) {
   }
 
   conf.nrbutt = jconf["b"].size();
-  Serial.println(conf.nrbutt);
+  //Serial.println(conf.nrbutt);
   for (byte i = 0; i < conf.nrbutt; i++) {
 
     conf.bmaps[i].pin = jconf["b"][i]["p"];
@@ -240,19 +249,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void setpins() {
-  for (byte l = 0; l < conf.nrlights; l++) {
-    if (conf.lights[l].tempadj) {
-      //Serial.print("setting pin ");
-      //Serial.print(conf.lights[l].wpin);
-      //Serial.println(" as output");
-      pinMode(conf.lights[l].wpin, OUTPUT);
-    }
-    pinMode(conf.lights[l].cpin, OUTPUT);
-    //Serial.print("setting pin ");
-    //Serial.print(conf.lights[l].cpin);
-    //Serial.println(" as output");
-
-  }
+//  for (byte l = 0; l < conf.nrlights; l++) {
+//    if (conf.lights[l].tempadj) {
+//      //Serial.print("setting pin ");
+//      //Serial.print(conf.lights[l].wpin);
+//      //Serial.println(" as output");
+//      pinMode(conf.lights[l].wpin, OUTPUT);
+//    }
+//    pinMode(conf.lights[l].cpin, OUTPUT);
+//    //Serial.print("setting pin ");
+//    //Serial.print(conf.lights[l].cpin);
+//    //Serial.println(" as output");
+//
+//  }
   for (byte b = 0; b < conf.nrbutt; b++) {
     //Serial.print("setting pin ");
     //Serial.print(conf.bmaps[b].pin);

@@ -46,7 +46,7 @@ void handlebutton(byte butt) {
   }
 
   //short press
-  if ((duration[butt] > 50) and (millis() - lastLPTime[butt] > 300)) {
+  if ((duration[butt] > 20) and (millis() - lastLPTime[butt] > 300)) {
     shortpress[butt] = true;
 
     //double short press
