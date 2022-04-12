@@ -24,6 +24,7 @@ IPAddress server(192,168,91,215);
 String metricsTopic = "metrics/";
 
 Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
+Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
 
 EthernetClient ethClient;
 PubSubClient mclient(ethClient);
@@ -59,6 +60,7 @@ int shuttgtstate[15];
 int shutcurstate[15];
 int shutinitstate[15];
 bool shutinprogress[15];
+bool directionup[15];
 bool interrupt[15];
 bool fanison[15];
 bool fanonhi[15];
@@ -101,6 +103,12 @@ void setup(void) {
     Serial.println(i);
     pwm[i].begin();
     pwm[i].setPWMFreq(1600);
+  }
+
+  for (byte i=0; i < 1; i++) {
+    Serial.println(i);
+    onoff[i].begin();
+    onoff[i].setPWMFreq(100);
   }
 
 
@@ -278,25 +286,31 @@ void setpins() {
     //Serial.print(conf.shutters[s].downpin);
     //Serial.println(" as output");
 
-    pinMode(conf.shutters[s].uppin, OUTPUT);
-    pinMode(conf.shutters[s].downpin, OUTPUT);
-    digitalWrite(conf.shutters[s].uppin, LOW);
-    digitalWrite(conf.shutters[s].downpin, LOW);
+    byte ctrlindexup = conf.shutters[s].uppin / 16;
+    byte uppin = conf.shutters[s].uppin - 16*ctrlindexup;
+    byte ctrlindexdn = conf.shutters[s].downpin / 16;
+    byte downpin = conf.shutters[s].downpin - 16*ctrlindexdn;
+
+    onoff[ctrlindexup].setPWM(uppin, 0, 4096);
+    onoff[ctrlindexdn].setPWM(downpin, 0, 4096);
+
+    //digitalWrite(conf.shutters[s].uppin, LOW);
+    //digitalWrite(conf.shutters[s].downpin, LOW);
   }
 
-  for (byte f = 0; f < conf.nrfans; f++) {
-    //Serial.print("setting pin ");
-    //Serial.print(conf.fans[f].hispdpin);
-    //Serial.println(" as output");
-    //Serial.print("setting pin ");
-    //Serial.print(conf.fans[f].lowspdpin);
-    //Serial.println(" as output");
-
-    pinMode(conf.fans[f].lowspdpin, OUTPUT);
-    pinMode(conf.fans[f].hispdpin, OUTPUT);
-    digitalWrite(conf.fans[f].lowspdpin, LOW);
-    digitalWrite(conf.fans[f].hispdpin, LOW);
-  }
+//  for (byte f = 0; f < conf.nrfans; f++) {
+//    //Serial.print("setting pin ");
+//    //Serial.print(conf.fans[f].hispdpin);
+//    //Serial.println(" as output");
+//    //Serial.print("setting pin ");
+//    //Serial.print(conf.fans[f].lowspdpin);
+//    //Serial.println(" as output");
+//
+//    pinMode(conf.fans[f].lowspdpin, OUTPUT);
+//    pinMode(conf.fans[f].hispdpin, OUTPUT);
+//    digitalWrite(conf.fans[f].lowspdpin, LOW);
+//    digitalWrite(conf.fans[f].hispdpin, LOW);
+//  }
 
 
 

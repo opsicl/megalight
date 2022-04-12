@@ -63,30 +63,15 @@ void applyintensities() {
 
       //analogWrite(conf.lights[l].cpin,cin);
       //Serial.println("here_light");
-      byte lindexc;
-      byte pwmindexc;
-      if (conf.lights[l].cpin >= 16) {
-        pwmindexc = 0;
-        lindexc = conf.lights[l].cpin - 16;
-      }
-      else {
-        pwmindexc = 1;
-        lindexc = conf.lights[l].cpin ;
-      }
+      byte pwmindexc = conf.lights[l].cpin / 16;
+      byte lindexc = conf.lights[l].cpin - 16*pwmindexc;
       pwm[pwmindexc].setPWM(lindexc, 0, cin);
 
       //analogWrite(conf.lights[l].wpin,win);
-      byte lindexw;
-      byte pwmindexw;
-      if (conf.lights[l].wpin >= 16) {
-        pwmindexw = 0;
-        lindexw = conf.lights[l].cpin - 16;
-      }
-      else {
-        pwmindexw = 1;
-        lindexw = conf.lights[l].wpin ;
-      }
-      pwm[pwmindexc].setPWM(lindexw, 0, win);
+      byte pwmindexw = conf.lights[l].wpin / 16;
+      byte lindexw = conf.lights[l].wpin - 16*pwmindexw;
+
+      pwm[pwmindexw].setPWM(lindexw, 0, win);
 
       //Serial.println("here_light2");
 
