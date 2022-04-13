@@ -27,6 +27,9 @@ void handlebutton(byte butt) {
 
   //long press
   if ((press == HIGH) and (millis() - lastPressTime[butt] > 300)) {
+    if (not longpressing[butt]) {
+      publish_metric("button", String(butt)+"/longpress", "1");
+    }
     longpressing[butt] = true;
   }
 
@@ -41,24 +44,30 @@ void handlebutton(byte butt) {
     }
     shortpress[butt] = false;
     doublepress[butt] = false;
+    if (longpressing[butt]) {
+      publish_metric("button", String(butt)+"/longpress", "0");
+    }
     longpressing[butt] = false;
+    
     endpress[butt] = true;
   }
 
   //short press
   if ((duration[butt] > 20) and (millis() - lastLPTime[butt] > 300)) {
     shortpress[butt] = true;
+    publish_metric("button", String(butt)+"/shortpress", "1");
 
     //double short press
     if (millis() - lastShortPress[butt] < 500) {
-      Serial.print("Double press on: ");
-      Serial.println(butt);
+      //Serial.print("Double press on: ");
+      //Serial.println(butt);
       doublepress[butt] = true;
+      publish_metric("button", String(butt)+"/doublepress", "1");
     }
 
     lastShortPress[butt] = millis();
-    Serial.print("Button pressed: ");
-    Serial.println(butt);
+    //Serial.print("Button pressed: ");
+    //Serial.println(butt);
   }
 
   //if any button pressed or released, call the appropriate function

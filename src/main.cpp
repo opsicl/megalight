@@ -121,13 +121,28 @@ void setup(void) {
     digitalWrite(pin, LOW);
   }
   //enable the hardware watchdog at 2s
-  wdt_enable(WDTO_2S);
+  wdt_enable(WDTO_1S);
 
   
 
   metricsTopic += idString;
   Serial.println(F("Setup done"));
   //request config on startup
+}
+
+void publish_metric (String metric, String tag, String value) {
+  //Serial.print(metric);
+  //Serial.print(F("/"));
+  //Serial.print(tag);
+  //Serial.print(F(" "));
+  //Serial.println(value);
+  char pubtopic[70];
+  //char val[10];
+
+  //value.toCharArray(val,value.length()+1);
+  snprintf(pubtopic, sizeof pubtopic, "%s/%s/%s", metricsTopic.c_str(), metric.c_str(), tag.c_str());
+  mclient.publish(pubtopic, value.c_str(), true);
+
 }
 
 void configure(byte* payload) {
@@ -320,7 +335,7 @@ void setpins() {
 int pltoint(byte* payload, unsigned int length) {
   char temp[length+1];
 
-  strncpy(temp, payload, length);
+  strncpy(temp, (char*)payload, length);
   //temp[length] = '\0';
   return atoi(temp);
 }
@@ -385,47 +400,9 @@ void loop(void) {
   }
 
   //report current state every 30s
-  if (millis() - lastReport > 10000) {
-    //char topic[10] = "metrics/" + idString;
-    //char msg[12] = "freeram " + String(FreeMemory());
-    //mclient.publish(strcat("metrics/", idString), "test!");
-    //Serial.println(metricsTopic);
-    char topic[20];
-    snprintf(topic, sizeof topic, "%s/freeram", metricsTopic.c_str() );
-    char value[5];
-    snprintf(value, sizeof value, "%i", freeMemory());
+  if (millis() - lastReport > 5000) {
 
-    Serial.print(topic);
-    Serial.println(freeMemory());
-    mclient.publish(topic, value, true);
-
-    //strcat("freeram ", freeMemory()));
-    //Serial.print(F("Free RAM = ")); //F function does the same and is now a built in library, in IDE > 1.0.0
-    //Serial.println(freeMemory(), DEC);  // print how much RAM is available.
-//    //report current state
-//    Serial.println(F("lighs:"));
-//    for (byte l=0; l<conf.nrlights; l++) {
-//      Serial.print(l);
-//      Serial.print(F("->"));
-//      Serial.println(in[l]);
-//    }
-//    Serial.println(F("shutters:"));
-//    for (byte s=0; s<conf.nrshutters; s++) {
-//      Serial.print(s);
-//      Serial.print(F("->"));
-//      Serial.println(shutcurstate[s]);
-//    }
-//    Serial.println(F("fans:"));
-//    for (byte f=0; f<conf.nrfans; f++) {
-//      Serial.print(f);
-//      Serial.print(F("->"));
-//      Serial.println(fanison[f]);
-//    }
-//    Serial.print(F("Ethernet: "));
-//    Serial.println(Ethernet.maintain());
-//
-
-
+    publish_metric("freeram", "mem", String(freeMemory()));
 
     lastReport = millis();
 

@@ -1,6 +1,8 @@
 #include <Adafruit_PWMServoDriver.h>
 // Update these with values suitable for your network.
 int pltoint(byte* payload, unsigned int length);
+void publish_metric (String metric, String tag, String value);
+
 struct light {
   bool tempadj;
   byte wpin;

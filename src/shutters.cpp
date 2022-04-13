@@ -52,6 +52,9 @@ void controlshutter(byte shutter) {
       } 
       if (millis() - eottime[shutter] > 3000 or interrupt[shutter]) {
 
+        //publish state before messing with the relays
+        publish_metric("shutters", String(shutter)+"/open", String(shutcurstate[shutter]));
+
         //digitalWrite(conf.shutters[shutter].uppin, LOW);
         onoff[ctrlindexup].setPWM(uppin, 0, 4096);
 

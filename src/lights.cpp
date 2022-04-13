@@ -9,7 +9,6 @@
 
 void setlight(String lightattr, byte* payload, unsigned int length) {
 
-  Serial.println("herexx");
   byte attrindex;
   int light;
   if (lightattr[1] == "/") {
@@ -62,7 +61,6 @@ void applyintensities() {
       //}
 
       //analogWrite(conf.lights[l].cpin,cin);
-      //Serial.println("here_light");
       byte pwmindexc = conf.lights[l].cpin / 16;
       byte lindexc = conf.lights[l].cpin - 16*pwmindexc;
       pwm[pwmindexc].setPWM(lindexc, 0, cin);
@@ -70,46 +68,42 @@ void applyintensities() {
       //analogWrite(conf.lights[l].wpin,win);
       byte pwmindexw = conf.lights[l].wpin / 16;
       byte lindexw = conf.lights[l].wpin - 16*pwmindexw;
-
       pwm[pwmindexw].setPWM(lindexw, 0, win);
 
-      //Serial.println("here_light2");
 
     }
     else {
       if (millis() - lastIntSet[l] > 1) {
-        if (in[l] > si[l]) {
-          if (in[l] - si[l] > 20) {
-            si[l] += 20;
-          } else {
-            si[l] = in[l];
+        if (in[l] == si[l]) {
+          if (lastIntSet[l] != 0 and dimming[l] == false) {
+            //we just finished setting the lights, sending state
+            publish_metric("lights", String(l)+"/brightness", String(si[l]));
+            lastIntSet[l] = 0;
           }
-          lastIntSet[l] = millis();
-        }
-        if (in[l] < si[l]) {
-          if (si[l] - in[l] > 20) {
-            si[l] -= 20;
-          } else {
-            si[l] = in[l];
+        } else {
+          if (in[l] > si[l]) {
+            if (in[l] - si[l] > 20) {
+              si[l] += 20;
+            } else {
+              si[l] = in[l];
+            }
+            lastIntSet[l] = millis();
           }
-          lastIntSet[l] = millis();
-        }
-      }
+          if (in[l] < si[l]) {
+            if (si[l] - in[l] > 20) {
+              si[l] -= 20;
+            } else {
+              si[l] = in[l];
+            }
+            lastIntSet[l] = millis();
+          }
 
-      //Serial.println("here_light3");
-      byte pwmindex;
-      byte lindex;
-      if (conf.lights[l].cpin >= 16) {
-        pwmindex = 1;
-        lindex = conf.lights[l].cpin - 16;
+        byte pwmindex = conf.lights[l].cpin / 16;
+        byte lindex = conf.lights[l].cpin - 16*pwmindex;
+        pwm[pwmindex].setPWM(lindex, 0, si[l]);
+        //analogWrite(conf.lights[l].cpin,si[l]);
+        }
       }
-      else {
-        pwmindex = 0;
-        lindex = conf.lights[l].cpin;
-      }
-      pwm[pwmindex].setPWM(conf.lights[l].cpin, 0, si[l]);
-      //analogWrite(conf.lights[l].cpin,si[l]);
-      //Serial.println("here_light4");
     }
   }
 
