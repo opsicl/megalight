@@ -32,43 +32,42 @@ PubSubClient mclient(ethClient);
 Conf conf;
 long lastPrint;
 long configTime;
-long lastPressTime[15];
-long lastShortPress[15];
-long duration[15];
-long lastLPTime[15];
-long lastIntSet[15];
+long lastPressTime[35];
+long lastShortPress[35];
+long duration[35];
+long lastLPTime[35];
+long lastIntSet[35];
 long shutterStart[15];
 long eottime[15];
 long lastReconnectAttempt = 0;
 long lastReport = 0;
 long lastVarDump = 0;
 byte debugpin;
-bool lastpress[15];
+bool lastpress[35];
 //color temp
-int ct[15];
+int ct[35];
 //intensity
-int in[15];
+int in[35];
 //last intensity
-int li[15];
+int li[35];
 //currently set intensity
-int si[15];
+int si[35];
 //dimming direction
-int dimdir[15];
+int dimdir[35];
 //dimming in progress
-bool dimming[15];
+bool dimming[35];
 int shuttgtstate[15];
 int shutcurstate[15];
 int shutinitstate[15];
 bool shutinprogress[15];
-bool directionup[15];
 bool interrupt[15];
 bool fanison[15];
 bool fanonhi[15];
 bool pinsset = false;
-bool longpressing[15];
-bool shortpress[15];
-bool doublepress[15];
-bool endpress[15];
+bool longpressing[35];
+bool shortpress[35];
+bool doublepress[35];
+bool endpress[35];
 
 void callback(char* topic, byte* payload, unsigned int length);
 
@@ -121,7 +120,7 @@ void setup(void) {
     digitalWrite(pin, LOW);
   }
   //enable the hardware watchdog at 2s
-  wdt_enable(WDTO_1S);
+  wdt_enable(WDTO_4S);
 
   
 
@@ -147,13 +146,17 @@ void publish_metric (String metric, String tag, String value) {
 
 void configure(byte* payload) {
 
-  Serial.println(F("Got reconfiguration request"));
-  StaticJsonDocument<1024> jconf;
+  //Serial.println(F("Got reconfiguration request"));
+  //publish_metric("config", "received", String(1));
+  //StaticJsonDocument<1500> jconf;
+  DynamicJsonDocument jconf(1300);
   DeserializationError error = deserializeJson(jconf, payload);
   // Test if parsing succeeds.
   if (error) {
     Serial.print(F("deserializeJson() failed: "));
     //Serial.println(error.c_str());
+    publish_metric("config", "deserialize", error.c_str());
+
     return;
   }
 
@@ -194,6 +197,7 @@ void configure(byte* payload) {
     }
   }
   pinsset = false;
+  publish_metric("config", "accepted", String(1));
   //write config to eeprom
   //i suspect issues with the eeprom
   //EEPROM.put(0, conf);
@@ -222,15 +226,30 @@ boolean reconnect() {
   if (mclient.connect(client.c_str())) {
 
     // ... and resubscribe
-    char topic[20];
-    snprintf(topic, sizeof topic, "%s/lights/#", idString.c_str() );
-    mclient.subscribe(topic);
-    snprintf(topic, sizeof topic, "%s/shutters/#", idString.c_str() );
-    mclient.subscribe(topic);
-    snprintf(topic, sizeof topic, "%s/fans/#", idString.c_str() );
-    mclient.subscribe(topic);
-    snprintf(topic, sizeof topic, "%s/setconfig", idString.c_str() );
-    mclient.subscribe(topic);
+    //char topic[20];
+    //snprintf(topic, sizeof topic, "%s/lights/#", idString.c_str() );
+    //mclient.subscribe(topic);
+    //snprintf(topic, sizeof topic, "%s/shutters/#", idString.c_str() );
+    //mclient.subscribe(topic);
+    //snprintf(topic, sizeof topic, "%s/fans/#", idString.c_str() );
+    //mclient.subscribe(topic);
+    //snprintf(topic, sizeof topic, "%s/setconfig", idString.c_str() );
+    //mclient.subscribe(topic);
+
+    String topic;
+    topic = idString + "/lights/#";
+    mclient.subscribe(topic.c_str());
+    topic = idString + "/shutters/#";
+    mclient.subscribe(topic.c_str());
+    topic = idString + "/fans/#";
+    mclient.subscribe(topic.c_str());
+    topic = idString + "/fans/#";
+    mclient.subscribe(topic.c_str());
+    topic = idString + "/setconfig";
+    mclient.subscribe(topic.c_str());
+
+
+
     Serial.println(F("Connected to mqtt"));
   }
   return mclient.connected();

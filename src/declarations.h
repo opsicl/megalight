@@ -1,5 +1,4 @@
 #include <Adafruit_PWMServoDriver.h>
-// Update these with values suitable for your network.
 int pltoint(byte* payload, unsigned int length);
 void publish_metric (String metric, String tag, String value);
 
@@ -35,45 +34,44 @@ struct Conf {
   byte nrshutters;
   byte nrfans;
   byte nrbutt;
-  bmap bmaps[15];
+  bmap bmaps[35];
   shutter shutters[15];
-  light lights[15];
+  light lights[35];
   fan fans[15];
 };
 
 extern Conf conf;
 extern long lastPrint;
-extern long lastPressTime[15];
-extern long lastShortPress[15];
-extern long duration[15];
-extern long lastLPTime[15];
-extern long lastIntSet[15];
+extern long lastPressTime[35];
+extern long lastShortPress[35];
+extern long duration[35];
+extern long lastLPTime[35];
+extern long lastIntSet[35];
 extern long shutterStart[15];
 extern long eottime[15];
 extern long lastReconnectAttempt;
-extern bool lastpress[15];
-extern bool longpressing[15];
-extern bool shortpress[15];
-extern bool doublepress[15];
-extern bool endpress[15];
+extern bool lastpress[35];
+extern bool longpressing[35];
+extern bool shortpress[35];
+extern bool doublepress[35];
+extern bool endpress[35];
 extern byte debugpin;
 //color temp
-extern int ct[15];
+extern int ct[35];
 //intensity
-extern int in[15];
+extern int in[35];
 //last intensity
-extern int li[15];
+extern int li[35];
 //currently set intensity
-extern int si[15];
+extern int si[35];
 //dimming direction
-extern int dimdir[15];
+extern int dimdir[35];
 //dimming in progress
-extern bool dimming[15];
+extern bool dimming[35];
 extern int shuttgtstate[15];
 extern int shutcurstate[15];
 extern int shutinitstate[15];
 extern bool shutinprogress[15];
-extern bool directionup[15];
 extern bool interrupt[15];
 extern bool fanison[15];
 extern bool fanonhi[15];

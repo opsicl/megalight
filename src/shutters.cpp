@@ -24,11 +24,8 @@ void setshutter(String shutterattr, byte* payload, unsigned int length) {
     int value = atoi((char *)payload);
     shuttgtstate[shutter] = value;
     shutinprogress[shutter] = true;
-    if (shuttgtstate[shutter] >= shutcurstate[shutter]) {
-      directionup[shutter] = true;
-    } else {
-      directionup[shutter] = false;
-    }
+
+    publish_metric("shutters", String(shutter)+"/opentarget", String(shuttgtstate[shutter]));
   }
 }
 
@@ -46,7 +43,7 @@ void controlshutter(byte shutter) {
   byte downpin = conf.shutters[shutter].downpin - 16*ctrlindexdn;
   
   if (shutinprogress[shutter]) {
-    if ((directionup[shutter] and shutcurstate[shutter] >= shuttgtstate[shutter]) or (directionup[shutter] == false and shutcurstate[shutter] <= shuttgtstate[shutter]) or interrupt[shutter]) {
+    if (shutcurstate[shutter] == shuttgtstate[shutter] or interrupt[shutter]) {
       if (eottime[shutter] == 0  and (shuttgtstate[shutter] == 100 or shuttgtstate[shutter] == 0)) {
         eottime[shutter] = millis();
       } 
@@ -73,18 +70,19 @@ void controlshutter(byte shutter) {
       byte ctrlindexp;
       byte otherpin;
       byte ctrlindexo;
-      if (shuttgtstate[shutter] > shutcurstate[shutter]) {
+      bool directionup;
+      if (shuttgtstate[shutter] >= shutcurstate[shutter]) {
         pin = uppin;
         ctrlindexp = ctrlindexup;
         otherpin = downpin;
         ctrlindexo = ctrlindexdn;
-        directionup[shutter] = true;
+        directionup = true;
       } else {
         pin = downpin;
         ctrlindexp = ctrlindexdn;
         otherpin = uppin;
         ctrlindexo = ctrlindexup;
-        directionup[shutter] = false;
+        directionup = false;
       }
 
       if (shutterStart[shutter] == 0) {
@@ -98,7 +96,7 @@ void controlshutter(byte shutter) {
       onoff[ctrlindexp].setPWM(pin, 4096, 0);
       // debugpin = pin;
       int delta = (millis() - shutterStart[shutter]) * 100 / (conf.shutters[shutter].time * 1000);
-      if (directionup[shutter]) {
+      if (directionup) {
         shutcurstate[shutter] = shutinitstate[shutter] + delta;
       } else {
         shutcurstate[shutter] = shutinitstate[shutter] - delta;
@@ -122,18 +120,16 @@ void shuttersbutton(byte butt) {
 
   for (byte sb = 0; sb < conf.bmaps[butt].nrdev; sb++) {
     byte s = conf.bmaps[butt].devices[sb];
-    byte pin;
     byte tgtstate;
+    bool directionup;
     
     if (conf.bmaps[butt].shutterup) {
-      pin = conf.shutters[s].uppin;
       tgtstate = 100;
-      directionup[s] = true;
+      directionup = true;
     }
     if (conf.bmaps[butt].shutterdown) {
-      pin = conf.shutters[s].downpin;
       tgtstate = 0;
-      directionup[s] = false;
+      directionup = false;
     }
     if (shortpress[butt]) {
       if (shutinprogress[s]) {
@@ -151,7 +147,7 @@ void shuttersbutton(byte butt) {
         interrupt[s] = true;
       } else {
         shutinprogress[s] = true;
-        if (directionup[s]) {
+        if (directionup) {
           if (shutcurstate[s] < 100) {
             shuttgtstate[s] = shutcurstate[s] + 1;
           }
