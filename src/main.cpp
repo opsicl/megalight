@@ -38,7 +38,6 @@ long duration[35];
 long lastLPTime[35];
 long lastIntSet[35];
 long shutterStart[15];
-long eottime[15];
 long lastReconnectAttempt = 0;
 long lastReport = 0;
 long lastVarDump = 0;
@@ -135,12 +134,14 @@ void publish_metric (String metric, String tag, String value) {
   //Serial.print(tag);
   //Serial.print(F(" "));
   //Serial.println(value);
-  char pubtopic[70];
+  //char pubtopic[70];
   //char val[10];
 
   //value.toCharArray(val,value.length()+1);
-  snprintf(pubtopic, sizeof pubtopic, "%s/%s/%s", metricsTopic.c_str(), metric.c_str(), tag.c_str());
-  mclient.publish(pubtopic, value.c_str(), true);
+  //snprintf(pubtopic, sizeof pubtopic, "%s/%s/%s", metricsTopic.c_str(), metric.c_str(), tag.c_str());
+  String pubtopic = metricsTopic + "/" + metric + "/" + tag;
+  Serial.println("publishig " + pubtopic + " " + value);
+  mclient.publish(pubtopic.c_str(), value.c_str(), true);
 
 }
 
@@ -422,6 +423,11 @@ void loop(void) {
   if (millis() - lastReport > 5000) {
 
     publish_metric("freeram", "mem", String(freeMemory()));
+    Serial.println("shutters: "+ String(conf.nrshutters));
+    for (byte s = 0; s < conf.nrshutters; s++) {
+      Serial.println("publishing shutter "+ String(s));
+      publish_metric("shutters", String(s)+"/open", String(shutcurstate[s]));
+    }
 
     lastReport = millis();
 

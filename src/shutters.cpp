@@ -22,10 +22,15 @@ void setshutter(String shutterattr, byte* payload, unsigned int length) {
   if (attr == "open") {
     payload[length] = '\0';
     int value = atoi((char *)payload);
-    shuttgtstate[shutter] = value;
-    shutinprogress[shutter] = true;
+    if (value >= 0 and value <= 100) {
+      shuttgtstate[shutter] = value;
+      shutinprogress[shutter] = true;
+      publish_metric("shutters", String(shutter)+"/opentarget", String(shuttgtstate[shutter]));
+    }
+    else if (value == 101) {
+      interrupt[shutter] = true;
+    }
 
-    publish_metric("shutters", String(shutter)+"/opentarget", String(shuttgtstate[shutter]));
   }
 }
 
@@ -43,28 +48,22 @@ void controlshutter(byte shutter) {
   byte downpin = conf.shutters[shutter].downpin - 16*ctrlindexdn;
   
   if (shutinprogress[shutter]) {
+    // conditions to end travel
     if (shutcurstate[shutter] == shuttgtstate[shutter] or interrupt[shutter]) {
-      if (eottime[shutter] == 0  and (shuttgtstate[shutter] == 100 or shuttgtstate[shutter] == 0)) {
-        eottime[shutter] = millis();
-      } 
-      if (millis() - eottime[shutter] > 3000 or interrupt[shutter]) {
+      
+      //publish the achieved state
+      publish_metric("shutters", String(shutter)+"/open", String(shutcurstate[shutter]));
 
-        //publish state before messing with the relays
-        publish_metric("shutters", String(shutter)+"/open", String(shutcurstate[shutter]));
+      //digitalWrite(conf.shutters[shutter].uppin, LOW);
+      onoff[ctrlindexup].setPWM(uppin, 0, 4096);
 
-        //digitalWrite(conf.shutters[shutter].uppin, LOW);
-        onoff[ctrlindexup].setPWM(uppin, 0, 4096);
-
-        //digitalWrite(conf.shutters[shutter].downpin, LOW);
-        onoff[ctrlindexdn].setPWM(downpin, 0, 4096);
-        shutterStart[shutter] = 0;
-        if (interrupt[shutter]) {
-          interrupt[shutter] = false;
-        } else {
-          shutinprogress[shutter] = false;
-        }
-        eottime[shutter] = 0;
+      //digitalWrite(conf.shutters[shutter].downpin, LOW);
+      onoff[ctrlindexdn].setPWM(downpin, 0, 4096);
+      shutterStart[shutter] = 0;
+      if (interrupt[shutter]) {
+        interrupt[shutter] = false;
       }
+      shutinprogress[shutter] = false;
     } else {
       byte pin;
       byte ctrlindexp;
@@ -109,6 +108,16 @@ void controlshutter(byte shutter) {
       if (shutcurstate[shutter] < 0) {
         shutcurstate[shutter] = 0;
       }
+
+
+      // keep at 99 or 1 for an additional 3 seconds if we want to completely open or close the shutter
+      if (shuttgtstate[shutter] == 0 and shutcurstate[shutter] == 0 and (millis() - shutterStart[shutter] < conf.shutters[shutter].time * 1000 + 3000) ) {
+        shutcurstate[shutter] = 1;
+      }
+      if (shuttgtstate[shutter] == 100 and shutcurstate[shutter] == 100 and (millis() - shutterStart[shutter] < conf.shutters[shutter].time * 1000 + 3000) ) {
+        shutcurstate[shutter] = 1;
+      }
+
 
     }
   } else {

@@ -48,7 +48,6 @@ extern long duration[35];
 extern long lastLPTime[35];
 extern long lastIntSet[35];
 extern long shutterStart[15];
-extern long eottime[15];
 extern long lastReconnectAttempt;
 extern bool lastpress[35];
 extern bool longpressing[35];
