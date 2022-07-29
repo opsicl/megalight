@@ -3,7 +3,7 @@
 #include "buttons.h"
 #include "shutters.h"
 
-void setshutter(String shutterattr, byte* payload, unsigned int length) {
+void setshutter(String shutterattr, String payload) {
 
   byte attrindex;
   int shutter;
@@ -16,12 +16,11 @@ void setshutter(String shutterattr, byte* payload, unsigned int length) {
     attrindex = 2;
   }
 
-  String attr = shutterattr.substring(attrindex,(attrindex + 4));
+  String attr = shutterattr.substring(attrindex + 1, attrindex + 4);
   //Serial.println(attr);
 
   if (attr == "open") {
-    payload[length] = '\0';
-    int value = atoi((char *)payload);
+    int value = payload.toInt();
     if (value >= 0 and value <= 100) {
       shuttgtstate[shutter] = value;
       shutinprogress[shutter] = true;

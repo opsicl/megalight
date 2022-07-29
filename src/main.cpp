@@ -295,19 +295,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
     setlight(lightattr,strPayload);
   }
 
-//  if (String(topic).substring(3,12) == "shutters/") {
-//    String shutterattr = String(topic).substring(12,String(topic).length());
-//    //Serial.print("Shutter command via MQTT ");
-//    //Serial.println(shutter.toInt());
-//    setshutter(shutterattr,payload,length);
-//  }
-//  if (String(topic).substring(3,8) == "fans/") {
-//    String fanattr = String(topic).substring(8,String(topic).length());
-//    //Serial.print("Fan command via MQTT ");
-//    //Serial.println(shutter.toInt());
-//    setfan(fanattr,payload,length);
-//  }
-//
+  if (strTopic.indexOf(shuttersprefix) == 0) {
+    //Serial.print(F("got light "));
+
+    String shutterattr = String(topic).substring(shuttersprefix.length(),strTopic.length());
+    setshutter(shutterattr,strPayload);
+  }
+
+  if (strTopic.indexOf(fansprefix) == 0) {
+    //Serial.print(F("got light "));
+
+    String fanattr = String(topic).substring(fansprefix.length(),strTopic.length());
+    setfan(fanattr,strPayload);
+  }
 
   if (strTopic == idString + "/setconfig") {
     configure(strPayload);

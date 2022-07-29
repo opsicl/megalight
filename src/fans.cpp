@@ -3,7 +3,7 @@
 #include "buttons.h"
 #include "fans.h"
 
-void setfan(String fanattr, byte* payload, unsigned int length) {
+void setfan(String fanattr, String payload) {
 
   byte attrindex;
   int fan;
@@ -22,8 +22,7 @@ void setfan(String fanattr, byte* payload, unsigned int length) {
   
 
   if (attr == "speed") {
-    payload[length] = '\0';
-    int value = atoi((char *)payload);
+    int value = payload.toInt();
     //Serial.println(value);
 
     byte hiindex = conf.fans[fan].hispdpin/16;
