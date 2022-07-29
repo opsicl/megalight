@@ -1,24 +1,22 @@
-#include <SPI.h>
-#include <Ethernet.h>
+#include <ETH.h>
+#include <ArduinoOTA.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <string.h>
-#include <avr/wdt.h>
 #include "declarations.h"
 #include "buttons.h"
 #include "lights.h"
 #include "shutters.h"
 #include "fans.h"
-#include "MemoryFree.h"
+#include <OneWire.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
 
 byte id = 0x98;
-String idString = "98";
+String idString = "downstairs-lights";
 
-byte mac[] = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, id };
 IPAddress server(192,168,91,215);
 
 String metricsTopic = "metrics/";
@@ -26,12 +24,13 @@ String metricsTopic = "metrics/";
 Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
 Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
 
-EthernetClient ethClient;
+static bool eth_connected = false;
+WiFiClient ethClient;
 PubSubClient mclient(ethClient);
 
 Conf conf;
 long lastPrint;
-long configTime;
+long cfgTime;
 long lastPressTime[35];
 long lastShortPress[35];
 long duration[35];
@@ -71,30 +70,40 @@ bool endpress[35];
 void callback(char* topic, byte* payload, unsigned int length);
 
 void setup(void) {
-  // change the timers frequency to try to avoid flickering
-  //int myEraser = 7;
-  //TCCR1B &= ~myEraser;
-  //TCCR2B &= ~myEraser;
-  //TCCR3B &= ~myEraser;
-  //TCCR4B &= ~myEraser;
-
-  //// frequencyes:
-  ////  prescaler = 1 ---> PWM frequency is 31000 Hz
-  ////  prescaler = 2 ---> PWM frequency is 4000 Hz
-  ////  prescaler = 3 ---> PWM frequency is 490 Hz (default value)
-  ////  prescaler = 4 ---> PWM frequency is 120 Hz
-  ////  prescaler = 5 ---> PWM frequency is 30 Hz
-  ////  prescaler = 6 ---> PWM frequency is <20 Hz
-  //int myPrescaler = 2;
-
-  ////TCCR0B will not be touched as it is used as main timer for millis() and other internals
-  ////pins 13 and 4 should not be used as light controllers for this reason
-  //TCCR1B |= myPrescaler; // pins 11,12
-  //TCCR2B |= myPrescaler; // pins 9,10
-  //TCCR3B |= myPrescaler; // pins 2,3,5
-  //TCCR4B |= myPrescaler; // pins 6,7,8
   Serial.begin(9600); //Begin serial communication
   Serial.println(F("Arduino Lights/Shutters controller")); //Print a message
+
+  ETH.begin();
+  //OTA
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
+  ArduinoOTA.begin();
+  //END OTA
+
 
 
   for (byte i=0; i < 2; i++) {
@@ -114,12 +123,12 @@ void setup(void) {
   //// The 11 PWM usable pins on the mega are: 2,3,5,6,7,8,9,11,12,45,46
 
   //// set all pins low for safety
-  for (byte pin = 0; pin <= 54; pin++) {
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, LOW);
-  }
+  //for (byte pin = 0; pin <= 54; pin++) {
+  //  pinMode(pin, OUTPUT);
+  //  digitalWrite(pin, LOW);
+  //}
   //enable the hardware watchdog at 2s
-  wdt_enable(WDTO_4S);
+  //wdt_enable(WDTO_4S);
 
   
 
@@ -145,12 +154,12 @@ void publish_metric (String metric, String tag, String value) {
 
 }
 
-void configure(byte* payload) {
+void configure(String payload) {
 
   //Serial.println(F("Got reconfiguration request"));
   //publish_metric("config", "received", String(1));
-  //StaticJsonDocument<1500> jconf;
-  DynamicJsonDocument jconf(1300);
+  //StaticJsonDocument<256> jconf;
+  DynamicJsonDocument jconf(4096);
   DeserializationError error = deserializeJson(jconf, payload);
   // Test if parsing succeeds.
   if (error) {
@@ -160,6 +169,8 @@ void configure(byte* payload) {
 
     return;
   }
+  publish_metric("config", "deserialize", "success");
+
 
   conf.nrlights = jconf["l"].size();
   for (byte i = 0; i < conf.nrlights; i++) {
@@ -215,16 +226,12 @@ void applystoredconfig() {
 
 
 boolean reconnect() {
-  Ethernet.init();
-  //delay(100);
-  if (Ethernet.begin(mac) != 0) {
-    //Serial.println(Ethernet.localIP());
-    mclient.setBufferSize(1024);
-    mclient.setServer(server, 1883);
-    mclient.setCallback(callback);
-  }
-  String client = "arduinoClient_" + idString;
-  if (mclient.connect(client.c_str())) {
+  mclient.setBufferSize(4096);
+  mclient.setServer(server, 1883);
+  mclient.setCallback(callback);
+
+
+  if (mclient.connect(idString.c_str())) {
 
     // ... and resubscribe
     //char topic[20];
@@ -257,6 +264,17 @@ boolean reconnect() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
+
+  char charpl[length+1];  //a buffer to hold the string
+  memcpy(charpl, payload, length); //copy the payload to the buffer
+  charpl[length] = '\0';
+  String strPayload = String(charpl);
+  String strTopic = String(topic);
+  //log("Received message on topic: " + strTopic);
+  //log(stringpl);
+
+  //publish_metric("log", "msg_received_size", String(length));
+  //publish_metric("log", "msg_received_topic", strTopic);
   //Serial.print("Message arrived [");
   //Serial.print(topic);
   //Serial.print("] ");
@@ -264,28 +282,35 @@ void callback(char* topic, byte* payload, unsigned int length) {
   //for (unsigned int i=0;i<length;i++) {
   //  Serial.print((char)payload[i]);
   //}
-  if (String(topic).substring(3,10) == "lights/") {
+
+
+  String lightsprefix = idString + "/lights/";
+  String shuttersprefix = idString + "/shutters/";
+  String fansprefix = idString + "/fans/";
+
+  if (strTopic.indexOf(lightsprefix) == 0) {
     //Serial.print(F("got light "));
 
-    String lightattr = String(topic).substring(10,String(topic).length());
-    setlight(lightattr,payload,length);
-  }
-  if (String(topic).substring(3,12) == "shutters/") {
-    String shutterattr = String(topic).substring(12,String(topic).length());
-    //Serial.print("Shutter command via MQTT ");
-    //Serial.println(shutter.toInt());
-    setshutter(shutterattr,payload,length);
-  }
-  if (String(topic).substring(3,8) == "fans/") {
-    String fanattr = String(topic).substring(8,String(topic).length());
-    //Serial.print("Fan command via MQTT ");
-    //Serial.println(shutter.toInt());
-    setfan(fanattr,payload,length);
+    String lightattr = String(topic).substring(lightsprefix.length(),strTopic.length());
+    setlight(lightattr,strPayload);
   }
 
+//  if (String(topic).substring(3,12) == "shutters/") {
+//    String shutterattr = String(topic).substring(12,String(topic).length());
+//    //Serial.print("Shutter command via MQTT ");
+//    //Serial.println(shutter.toInt());
+//    setshutter(shutterattr,payload,length);
+//  }
+//  if (String(topic).substring(3,8) == "fans/") {
+//    String fanattr = String(topic).substring(8,String(topic).length());
+//    //Serial.print("Fan command via MQTT ");
+//    //Serial.println(shutter.toInt());
+//    setfan(fanattr,payload,length);
+//  }
+//
 
-  if (String(topic) == "98/setconfig") {
-    configure(payload);
+  if (strTopic == idString + "/setconfig") {
+    configure(strPayload);
   }
 
   //Serial.println();
@@ -363,9 +388,9 @@ int pltoint(byte* payload, unsigned int length) {
 
 void loop(void) { 
 
-  wdt_reset();
+  //OTA code update
+  ArduinoOTA.handle();
 
-  Ethernet.maintain();
   if (!mclient.connected()) {
     //attempt to reconnect to mqtt every 20s
     if (millis() - lastReconnectAttempt > 20000 or lastReconnectAttempt == 0) {
@@ -374,7 +399,7 @@ void loop(void) {
       if (reconnect()) {
         lastReconnectAttempt = 0;
         mclient.publish("configreq",idString.c_str());
-        configTime = millis();
+        cfgTime = millis();
       }
     }
   }
@@ -385,21 +410,21 @@ void loop(void) {
 
   //alow 5s to receive config, else use the locally stored one
   if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0)  {
-    if (millis() - configTime > 5000) {
+    if (millis() - cfgTime > 5000) {
       //applystoredconfig();
       //if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0) {
         //Serial.println("publishing configreq");
         mclient.publish("configreq",idString.c_str());
-        configTime = millis();
+        cfgTime = millis();
       }
   }
   
 
   else {
     //Serial.println("here1");
-    if (not pinsset) {
-      setpins();
-    }
+    //if (not pinsset) {
+    //  setpins();
+    //}
     //Serial.println("here2");
     handlebuttons();
     //Serial.println("here3");
@@ -421,8 +446,12 @@ void loop(void) {
 
   //report current state every 30s
   if (millis() - lastReport > 5000) {
+    //publish_metric("log", "conf_nrlights", String(conf.nrlights));
+    //publish_metric("log", "conf_nrfans", String(conf.nrfans));
+    //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));
 
-    publish_metric("freeram", "mem", String(freeMemory()));
+
+    //publish_metric("freeram", "mem", String(freeMemory()));
     Serial.println("shutters: "+ String(conf.nrshutters));
     for (byte s = 0; s < conf.nrshutters; s++) {
       Serial.println("publishing shutter "+ String(s));

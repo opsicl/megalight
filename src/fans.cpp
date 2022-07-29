@@ -7,7 +7,7 @@ void setfan(String fanattr, byte* payload, unsigned int length) {
 
   byte attrindex;
   int fan;
-  if (fanattr[1] == "/") {
+  if (fanattr[1] == String("/")[0]) {
     fan = fanattr[0] - '0';
     attrindex = 1;
   } else {

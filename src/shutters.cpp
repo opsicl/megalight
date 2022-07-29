@@ -8,7 +8,7 @@ void setshutter(String shutterattr, byte* payload, unsigned int length) {
   byte attrindex;
   int shutter;
   //Serial.println(shutterattr);
-  if (shutterattr[1] == "/") {
+  if (shutterattr[1] == String("/")[0]) {
     shutter = shutterattr[0] - '0';
     attrindex = 1;
   } else {

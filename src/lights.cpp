@@ -7,26 +7,30 @@
 
 
 
-void setlight(String lightattr, byte* payload, unsigned int length) {
+void setlight(String lightattr, String payload) {
 
   byte attrindex;
   int light;
-  if (lightattr[1] == "/") {
+  if (lightattr[1] == String("/")[0]) {
     light = lightattr[0] - '0';
     attrindex = 1;
   } else {
     light = lightattr.substring(0,1).toInt();
     attrindex = 2;
   }
+  publish_metric("log","lights_on",String(light));
   //Serial.println(light);
-  String attr = lightattr.substring(attrindex,(attrindex + 10));
+  String attr = lightattr.substring(attrindex + 1,attrindex + 11);
   //Serial.println(attr);
 
+    publish_metric("log","lights_on_attr",String(light) + " " + attr);
   if (attr == "brightness") {
     //Serial.print(light);
     //Serial.print(F(" -> "));
     //Serial.println(value);
-    in[light] = pltoint(payload,length);
+    in[light] = payload.toInt();
+
+    publish_metric("log","lights_on",String(light) + " " + String(in[light]));
   }
   //li[light] = jlight["brightness"];
   //ct[light] = jlight["color_temp"];

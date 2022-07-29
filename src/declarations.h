@@ -74,7 +74,7 @@ extern bool shutinprogress[15];
 extern bool interrupt[15];
 extern bool fanison[15];
 extern bool fanonhi[15];
-extern long configTime;
+extern long cfgTime;
 extern bool pinsset;
 extern Adafruit_PWMServoDriver pwm[];
 extern Adafruit_PWMServoDriver onoff[];
