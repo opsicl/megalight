@@ -1,2 +1,2 @@
 void fansbutton(byte butt);
-void setfan(String fanattr, byte* payload, unsigned int length);
+void setfan(String fanattr, String payload);

@@ -15,7 +15,7 @@ void setfan(String fanattr, String payload) {
     attrindex = 2;
   }
 
-  String attr = fanattr.substring(attrindex,(attrindex + 5));
+  String attr = fanattr.substring(attrindex,attrindex + 6);
   //Serial.print(fan);
   //Serial.print(F(" -> "));
   //Serial.println(attr);
