@@ -63,71 +63,67 @@ void applyintensities() {
     byte pwmindexc = conf.lights[l].cpin / 16;
     byte lindexc = conf.lights[l].cpin - 16*pwmindexc;
 
-    if (millis() - lastIntSet[l] > 20) {
-      if (in[l] == si[l]) {
-        if (lastIntSet[l] != 0 and dimming[l] == false) {
-          //we just finished setting the lights, sending state
-          publish_metric("lights", String(l)+"/brightness", String(si[l]));
-          lastIntSet[l] = 0;
+    //only do stuff if something changed
+    if ((in[l] != si[l] or ct[l] != st[l]) and (millis() - lastIntSet[l] > 2)) {
+
+      if (in[l] > si[l]) {
+        if (in[l] - si[l] > 30) {
+          si[l] += 30;
+        } else {
+          si[l] = in[l];
         }
-      } else {
-        if (in[l] > si[l]) {
-          if (in[l] - si[l] > 400) {
-            si[l] += 400;
-          } else {
-            si[l] = in[l];
-          }
-          lastIntSet[l] = millis();
+        lastIntSet[l] = millis();
+      }
+      if (in[l] < si[l]) {
+        if (si[l] - in[l] > 30) {
+          si[l] -= 30;
+        } else {
+          si[l] = in[l];
         }
-        if (in[l] < si[l]) {
-          if (si[l] - in[l] > 400) {
-            si[l] -= 400;
-          } else {
-            si[l] = in[l];
-          }
-          lastIntSet[l] = millis();
-        }
+        lastIntSet[l] = millis();
       }
 
 
       if (conf.lights[l].tempadj) {
+
+        if (ct[l] > 333 or ct[l] < 250) {
+          ct[l] = 292;
+        }
+
         byte pwmindexw = conf.lights[l].wpin / 16;
         byte lindexw = conf.lights[l].wpin - 16*pwmindexw;
 
-        //float cin = 2*in[l]/(2*ct[l]+1);
-        //float win = 2*ct[l]*cin;
-        float win = 2 * in[l] / ((2 * ct[l]) + 1);
-        int cin = 2*ct[l];
-        if (win > 4095) {
-          win = 4095;
-          cin = round(2*ct[l]/win);
+        //invent a color temp metric adjusted to the intensity
+        int tdelta = si[l] / 42 * (ct[l] - 292);
+        //publish_metric("log", String(l)+" tmetric", String(tdelta));
+
+        int cin = si[l];
+        int win = si[l];
+
+        if (tdelta > 0) {
+          cin = win - tdelta;
         }
-        if (cin > 4095) {
-          cin = 4095;
-          win = round(2*ct[l]*cin);
+        if (tdelta < 0) {
+          win = cin + tdelta; 
         }
 
-        //if (millis() - lastPrint > 1000) {
-        //  Serial.print("ct");
-        //  Serial.println(ct[l]);
-        //  Serial.print("in");
-        //  Serial.println(in[l]);
-        //  Serial.print("cin");
-        //  Serial.println(cin);
-        //  Serial.print("win");
-        //  Serial.println(win);
-        //  lastPrint = millis();
-        //}
-
-        //analogWrite(conf.lights[l].cpin,cin);
         pwm[pwmindexc].setPWM(lindexc, 0, cin);
 
-        //analogWrite(conf.lights[l].wpin,win);
         pwm[pwmindexw].setPWM(lindexw, 0, win);
+        st[l] = ct[l];
 
 
       } else {
         pwm[pwmindexc].setPWM(lindexc, 0, si[l]);
+        st[l] = ct[l];
+      }
+      if (in[l] == si[l]) {
+        if (lastIntSet[l] != 0 and dimming[l] == false) {
+          //we just finished setting the lights, sending state
+          publish_metric("lights", String(l)+"/brightness", String(si[l]));
+          publish_metric("lights", String(l)+"/colortemp", String(st[l]));
+          lastIntSet[l] = 0;
+        }
       }
     }
   }

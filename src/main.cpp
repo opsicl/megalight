@@ -44,6 +44,8 @@ byte debugpin;
 bool lastpress[35];
 //color temp
 int ct[35];
+//currently set color temp
+int st[35];
 //intensity
 int in[35];
 //last intensity
