@@ -174,7 +174,11 @@ void configure(String payload) {
 
   conf.nrlights = jconf["l"].size();
   for (byte i = 0; i < conf.nrlights; i++) {
-    conf.lights[i].tempadj = jconf["l"][i]["t"];
+    if (jconf["l"][i]["t"] == 1) {
+      conf.lights[i].tempadj = true;
+    } else {
+      conf.lights[i].tempadj = false;
+    }
     conf.lights[i].cpin = jconf["l"][i]["c"];
     if (conf.lights[i].tempadj) {
       conf.lights[i].wpin = jconf["l"][i]["w"];
@@ -452,7 +456,17 @@ void loop(void) {
 
 
     for (byte l = 0; l < conf.nrlights; l++) {
-      publish_metric("lights", String(l)+"/brightness", String(in[l]));
+      publish_metric("lights", String(l)+"/brightness", String(li[l]));
+      publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
+      if (conf.lights[l].tempadj) {
+        publish_metric("lights", String(l)+"/colortemp", String(ct[l]));
+      }
+      if (in[l] > 0) {
+        publish_metric("lights", String(l)+"/onoff", String(1));
+      } else {
+        publish_metric("lights", String(l)+"/onoff", String(0));
+      }
+
     }
 
     for (byte s = 0; s < conf.nrshutters; s++) {
