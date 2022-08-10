@@ -23,14 +23,15 @@ void setlight(String lightattr, String payload) {
   String attr = lightattr.substring(attrindex + 1,attrindex + 11);
   //Serial.println(attr);
 
-  publish_metric("log","lights_on_attr",String(light) + " " + attr);
+  //publish_metric("log","lights_on_attr",String(light) + " " + attr);
   if (attr == "brightness") {
     //Serial.print(light);
     //Serial.print(F(" -> "));
     //Serial.println(value);
     in[light] = payload.toInt();
 
-    publish_metric("log","lights_on",String(light) + " " + String(in[light]));
+    //publish_metric("log","lights_on",String(light) + " " + String(in[light]));
+    publish_metric("lights", String(light) + "/brightness", String(in[light]));
   }
   //li[light] = jlight["brightness"];
   //ct[light] = jlight["color_temp"];

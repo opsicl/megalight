@@ -451,12 +451,24 @@ void loop(void) {
     //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));
 
 
-    //publish_metric("freeram", "mem", String(freeMemory()));
-    Serial.println("shutters: "+ String(conf.nrshutters));
+    for (byte l = 0; l < conf.nrlights; l++) {
+      publish_metric("lights", String(l)+"/brightness", String(in[l]));
+    }
+
     for (byte s = 0; s < conf.nrshutters; s++) {
-      Serial.println("publishing shutter "+ String(s));
       publish_metric("shutters", String(s)+"/open", String(shutcurstate[s]));
     }
+    for (byte f = 0; f < conf.nrfans; f++) {
+      byte speed = 0;
+      if (fanison[f]) {
+        speed = 1;
+        if (fanonhi[f]) {
+          speed = 2;
+        }
+      }
+      publish_metric("fans", String(f)+"/speed", String(speed));
+    }
+
 
     lastReport = millis();
 
