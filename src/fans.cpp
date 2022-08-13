@@ -15,11 +15,9 @@ void setfan(String fanattr, String payload) {
     attrindex = 2;
   }
 
-  String attr = fanattr.substring(attrindex,attrindex + 6);
-  //Serial.print(fan);
-  //Serial.print(F(" -> "));
-  //Serial.println(attr);
-  
+  String attr = fanattr.substring(attrindex +1 ,attrindex + 6);
+  publish_metric("log","fans_attr",String(attr) + " " + attr);
+
 
   if (attr == "speed") {
     int value = payload.toInt();

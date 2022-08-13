@@ -57,6 +57,8 @@ extern bool endpress[35];
 extern byte debugpin;
 //color temp
 extern int ct[35];
+//currently set color temp
+extern int st[35];
 //intensity
 extern int in[35];
 //last intensity

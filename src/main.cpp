@@ -44,6 +44,8 @@ byte debugpin;
 bool lastpress[35];
 //color temp
 int ct[35];
+//currently set color temp
+int st[35];
 //intensity
 int in[35];
 //last intensity
@@ -174,7 +176,11 @@ void configure(String payload) {
 
   conf.nrlights = jconf["l"].size();
   for (byte i = 0; i < conf.nrlights; i++) {
-    conf.lights[i].tempadj = jconf["l"][i]["t"];
+    if (jconf["l"][i]["t"] == 1) {
+      conf.lights[i].tempadj = true;
+    } else {
+      conf.lights[i].tempadj = false;
+    }
     conf.lights[i].cpin = jconf["l"][i]["c"];
     if (conf.lights[i].tempadj) {
       conf.lights[i].wpin = jconf["l"][i]["w"];
@@ -451,12 +457,34 @@ void loop(void) {
     //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));
 
 
-    //publish_metric("freeram", "mem", String(freeMemory()));
-    Serial.println("shutters: "+ String(conf.nrshutters));
+    for (byte l = 0; l < conf.nrlights; l++) {
+      publish_metric("lights", String(l)+"/brightness", String(li[l]));
+      publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
+      if (conf.lights[l].tempadj) {
+        publish_metric("lights", String(l)+"/colortemp", String(ct[l]));
+      }
+      if (in[l] > 0) {
+        publish_metric("lights", String(l)+"/onoff", String(1));
+      } else {
+        publish_metric("lights", String(l)+"/onoff", String(0));
+      }
+
+    }
+
     for (byte s = 0; s < conf.nrshutters; s++) {
-      Serial.println("publishing shutter "+ String(s));
       publish_metric("shutters", String(s)+"/open", String(shutcurstate[s]));
     }
+    for (byte f = 0; f < conf.nrfans; f++) {
+      byte speed = 0;
+      if (fanison[f]) {
+        speed = 1;
+        if (fanonhi[f]) {
+          speed = 2;
+        }
+      }
+      publish_metric("fans", String(f)+"/speed", String(speed));
+    }
+
 
     lastReport = millis();
 
