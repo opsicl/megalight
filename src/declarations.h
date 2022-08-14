@@ -1,4 +1,5 @@
 #include <Adafruit_PWMServoDriver.h>
+#include <PCF8574.h>
 int pltoint(byte* payload, unsigned int length);
 void publish_metric (String metric, String tag, String value);
 
@@ -41,6 +42,7 @@ struct Conf {
 };
 
 extern Conf conf;
+extern bool btn[32];
 extern long lastPrint;
 extern long lastPressTime[35];
 extern long lastShortPress[35];
@@ -80,5 +82,6 @@ extern long cfgTime;
 extern bool pinsset;
 extern Adafruit_PWMServoDriver pwm[];
 extern Adafruit_PWMServoDriver onoff[];
+extern PCF8574 pcf[];
 
 

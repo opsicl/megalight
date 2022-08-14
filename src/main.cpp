@@ -4,18 +4,20 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <string.h>
+#include <OneWire.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 #include "declarations.h"
 #include "buttons.h"
 #include "lights.h"
 #include "shutters.h"
 #include "fans.h"
-#include <OneWire.h>
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
+#include <PCF8574.h>
+
 
 
 byte id = 0x98;
-String idString = "downstairs-lights";
+String idString = "pcftest";
 
 IPAddress server(192,168,91,215);
 
@@ -23,12 +25,17 @@ String metricsTopic = "metrics/";
 
 Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
 Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
+PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
+
 
 static bool eth_connected = false;
 WiFiClient ethClient;
 PubSubClient mclient(ethClient);
 
 Conf conf;
+long last_irq_time[4];
+bool irq[4];
+bool btn[32];
 long lastPrint;
 long cfgTime;
 long lastPressTime[35];
@@ -68,6 +75,26 @@ bool longpressing[35];
 bool shortpress[35];
 bool doublepress[35];
 bool endpress[35];
+
+void IRAM_ATTR pcf_irq0() {
+  irq[0] = true;
+  last_irq_time[0] = millis();
+}
+void IRAM_ATTR pcf_irq1() {
+  irq[1] = true;
+  last_irq_time[1] = millis();
+}
+void IRAM_ATTR pcf_irq2() {
+  irq[2] = true;
+  last_irq_time[2] = millis();
+}
+void IRAM_ATTR pcf_irq3() {
+  irq[3] = true;
+  last_irq_time[3] = millis();
+}
+
+
+
 
 void callback(char* topic, byte* payload, unsigned int length);
 
@@ -120,19 +147,22 @@ void setup(void) {
     onoff[i].setPWMFreq(100);
   }
 
+  for (byte c=0; c<4; c++) {
+    pcf[c].begin();
+    for (byte p=0; p<8; p++) {
+      pcf[c].write(p, 1);
+    }
+  }
+  pinMode(0, INPUT_PULLUP);
+  pinMode(1, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  pinMode(32, INPUT_PULLUP);
+  touch_pad_intr_disable();
+  attachInterrupt(digitalPinToInterrupt(0), pcf_irq0, FALLING);
+  attachInterrupt(digitalPinToInterrupt(1), pcf_irq1, FALLING);
+  attachInterrupt(digitalPinToInterrupt(3), pcf_irq2, FALLING);
+  attachInterrupt(digitalPinToInterrupt(32), pcf_irq3, FALLING);
 
-  //// Pins 10,4, 50, 51, and 52 are used by the ethernet shield, avoid trying to use them for anything else
-  //// The 11 PWM usable pins on the mega are: 2,3,5,6,7,8,9,11,12,45,46
-
-  //// set all pins low for safety
-  //for (byte pin = 0; pin <= 54; pin++) {
-  //  pinMode(pin, OUTPUT);
-  //  digitalWrite(pin, LOW);
-  //}
-  //enable the hardware watchdog at 2s
-  //wdt_enable(WDTO_4S);
-
-  
 
   metricsTopic += idString;
   Serial.println(F("Setup done"));
@@ -415,7 +445,7 @@ void loop(void) {
 
 
   //alow 5s to receive config, else use the locally stored one
-  if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0)  {
+  if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0 and conf.nrbutt == 0)  {
     if (millis() - cfgTime > 5000) {
       //applystoredconfig();
       //if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0) {
@@ -427,27 +457,16 @@ void loop(void) {
   
 
   else {
-    //Serial.println("here1");
-    //if (not pinsset) {
-    //  setpins();
-    //}
-    //Serial.println("here2");
+    for (byte p; p < 4; p++) {
+      if (irq[p] and millis() - last_irq_time[p] >= 5) {
+        readpcf(p);
+        publish_metric("log", "handling_irq", String(p));
+        irq[p] = false;
+      }
+    }
     handlebuttons();
-    //Serial.println("here3");
-    applyintensities();
-    //Serial.println("here4");
-    controlshutters();
-    //Serial.println("here5");
-    // Print debug info evrey 10s
-    //if (millis() - lastVarDump > 10000) {
-    //  Serial.print("shutter 0 current state ");
-    //  Serial.println(shutcurstate[0]);
-    //  Serial.print("target state ");
-    //  Serial.println(shuttgtstate[0]);
-    //  Serial.print("pin last used ");
-    //  Serial.println(debugpin);
-    //  lastVarDump = millis();
-    //}
+    //applyintensities();
+    //controlshutters();
   }
 
   //report current state every 30s
@@ -459,7 +478,7 @@ void loop(void) {
 
     for (byte l = 0; l < conf.nrlights; l++) {
       publish_metric("lights", String(l)+"/brightness", String(li[l]));
-      publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
+      //publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
       if (conf.lights[l].tempadj) {
         publish_metric("lights", String(l)+"/colortemp", String(ct[l]));
       }
@@ -474,6 +493,10 @@ void loop(void) {
     for (byte s = 0; s < conf.nrshutters; s++) {
       publish_metric("shutters", String(s)+"/open", String(shutcurstate[s]));
     }
+    //for (byte b = 0; b < conf.nrbutt; b++) {
+    //  publish_metric("buttons", String(b)+"/pressed", String(btn[b]));
+    //}
+
     for (byte f = 0; f < conf.nrfans; f++) {
       byte speed = 0;
       if (fanison[f]) {
