@@ -17,7 +17,7 @@
 
 
 byte id = 0x98;
-String idString = "pcftest";
+String idString = "downstairs-lights";
 
 IPAddress server(192,168,91,215);
 
@@ -157,7 +157,6 @@ void setup(void) {
   pinMode(1, INPUT_PULLUP);
   pinMode(3, INPUT_PULLUP);
   pinMode(32, INPUT_PULLUP);
-  touch_pad_intr_disable();
   attachInterrupt(digitalPinToInterrupt(0), pcf_irq0, FALLING);
   attachInterrupt(digitalPinToInterrupt(1), pcf_irq1, FALLING);
   attachInterrupt(digitalPinToInterrupt(3), pcf_irq2, FALLING);
