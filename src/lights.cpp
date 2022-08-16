@@ -64,19 +64,19 @@ void applyintensities() {
     byte lindexc = conf.lights[l].cpin - 16*pwmindexc;
 
     //only do stuff if something changed
-    if ((in[l] != si[l] or ct[l] != st[l]) and (millis() - lastIntSet[l] > 2)) {
+    if ((in[l] != si[l] or ct[l] != st[l]) and (millis() - lastIntSet[l] > 1)) {
 
       if (in[l] > si[l]) {
-        if (in[l] - si[l] > 30) {
-          si[l] += 30;
+        if (in[l] - si[l] > 20) {
+          si[l] += 20;
         } else {
           si[l] = in[l];
         }
         lastIntSet[l] = millis();
       }
       if (in[l] < si[l]) {
-        if (si[l] - in[l] > 30) {
-          si[l] -= 30;
+        if (si[l] - in[l] > 20) {
+          si[l] -= 20;
         } else {
           si[l] = in[l];
         }
@@ -118,10 +118,11 @@ void applyintensities() {
         st[l] = ct[l];
       }
       if (in[l] == si[l]) {
-        if (lastIntSet[l] != 0 and dimming[l] == false) {
+        if (lastIntSet[l] != 0 and not dimming[l]) {
           //we just finished setting the lights, sending state
           publish_metric("lights", String(l)+"/brightness", String(si[l]));
           publish_metric("lights", String(l)+"/colortemp", String(st[l]));
+          publish_metric("log", String(l)+"/dimming", String(dimming[l]));
           lastIntSet[l] = 0;
         }
       }
@@ -162,37 +163,33 @@ void lightsbutton(byte butt) {
   }
 
   //longpress dimming   
-  if (longpressing[butt] and (millis() - lastLPTime[butt] > 40)) {
+  if (longpressing[butt] and (millis() - lastLPTime[butt] > 15)) {
     for (byte lindex = 0; lindex < conf.bmaps[butt].nrdev; lindex++) {
       byte l = conf.bmaps[butt].devices[lindex];
-      if (dimming[l] == false or in[l] == 0) {
+      if (not dimming[l] or in[l] == 0) {
         if (in[l] <= 10) {
           dimdir[l] = 1;
         } else {
           dimdir[l] = -1;
         }
+        dimming[l] = true;
       }
 
-      if (not (dimming[l] and (in[l] == 1 or in[l] >= 4095))) {
-        if (in[l] > 300) {
-          in[l] = in[l] + 50 * dimdir[l];
-          if (in[l] > 4095) {
-            in[l] = 4095;
-          }
-        } else {
-          if (in[l]>60) {
-            in[l] = in[l] + 5 * dimdir[l];
-          } else {
-            in[l] = in[l] + 1 * dimdir[l];
-          }
-          if (in[l] < 10) {
-            in[l] = 10;
-          }
-        }
-        li[l] = in[l];
+      int dimstep = in[l]/50;
+      if (dimstep < 1) {
+        dimstep = 1;
       }
+
+      in[l] = in[l] + dimstep * dimdir[l];
+        if (in[l] > 4095) {
+          in[l] = 4095;
+        }
+        if (in[l] < 10) {
+          in[l] = 10;
+        }
+      //}
+      li[l] = in[l];
       lastLPTime[butt] = millis();
-      dimming[l] = true;
     }
   }
 
