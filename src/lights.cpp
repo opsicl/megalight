@@ -163,7 +163,7 @@ void lightsbutton(byte butt) {
   }
 
   //longpress dimming   
-  if (longpressing[butt] and (millis() - lastLPTime[butt] > 20)) {
+  if (longpressing[butt] and (millis() - lastLPTime[butt] > 15)) {
     for (byte lindex = 0; lindex < conf.bmaps[butt].nrdev; lindex++) {
       byte l = conf.bmaps[butt].devices[lindex];
       if (not dimming[l] or in[l] == 0) {
@@ -181,17 +181,9 @@ void lightsbutton(byte butt) {
       }
 
       in[l] = in[l] + dimstep * dimdir[l];
-      //if (in[l] > 300) {
-      //  in[l] = in[l] + 30 * dimdir[l];
         if (in[l] > 4095) {
           in[l] = 4095;
         }
-      //} else {
-      //  if (in[l] > 300) {
-      //    in[l] = in[l] + 20 * dimdir[l];
-      //  } else {
-      //    in[l] = in[l] + 3 * dimdir[l];
-      //  }
         if (in[l] < 10) {
           in[l] = 10;
         }

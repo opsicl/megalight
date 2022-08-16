@@ -459,7 +459,7 @@ void loop(void) {
     for (byte p; p < 4; p++) {
       if (irq[p] and millis() - last_irq_time[p] >= 5) {
         readpcf(p);
-        publish_metric("log", "handling_irq", String(p));
+        //publish_metric("log", "handling_irq", String(p));
         irq[p] = false;
       }
     }
@@ -468,8 +468,8 @@ void loop(void) {
     controlshutters();
   }
 
-  //report current state every 30s
-  if (millis() - lastReport > 5000) {
+  //report current state every 60s
+  if (millis() - lastReport > 60000) {
     //publish_metric("log", "conf_nrlights", String(conf.nrlights));
     //publish_metric("log", "conf_nrfans", String(conf.nrfans));
     //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));

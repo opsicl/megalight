@@ -70,16 +70,17 @@ void handlebutton(byte butt) {
   }
 
   //short press
-  if ((duration[butt] > 0) and (millis() - lastLPTime[butt] > 300)) {
+  if ((duration[butt] > 10) and (millis() - lastLPTime[butt] > 500)) {
     shortpress[butt] = true;
-    publish_metric("button", String(conf.bmaps[butt].pin)+"/shortpress", "1");
 
     //double short press
-    if (millis() - lastShortPress[butt] < 500) {
+    if (millis() - lastShortPress[butt] < 300) {
       //Serial.print("Double press on: ");
       //Serial.println(butt);
       doublepress[butt] = true;
       publish_metric("button", String(conf.bmaps[butt].pin)+"/doublepress", "1");
+    } else {
+      publish_metric("button", String(conf.bmaps[butt].pin)+"/shortpress", "1");
     }
 
     lastShortPress[butt] = millis();
