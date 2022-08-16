@@ -157,10 +157,10 @@ void setup(void) {
   pinMode(1, INPUT_PULLUP);
   pinMode(3, INPUT_PULLUP);
   pinMode(32, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(0), pcf_irq0, FALLING);
-  attachInterrupt(digitalPinToInterrupt(1), pcf_irq1, FALLING);
-  attachInterrupt(digitalPinToInterrupt(3), pcf_irq2, FALLING);
-  attachInterrupt(digitalPinToInterrupt(32), pcf_irq3, FALLING);
+  attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
+  attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
+  attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
+  attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
 
 
   metricsTopic += idString;
@@ -464,8 +464,8 @@ void loop(void) {
       }
     }
     handlebuttons();
-    //applyintensities();
-    //controlshutters();
+    applyintensities();
+    controlshutters();
   }
 
   //report current state every 30s
@@ -477,6 +477,7 @@ void loop(void) {
 
     for (byte l = 0; l < conf.nrlights; l++) {
       publish_metric("lights", String(l)+"/brightness", String(li[l]));
+      publish_metric("lights", String(l)+"/dimming", String(dimming[l]));
       //publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
       if (conf.lights[l].tempadj) {
         publish_metric("lights", String(l)+"/colortemp", String(ct[l]));
