@@ -17,7 +17,7 @@
 
 
 byte id = 0x98;
-String idString = "downstairs-lights";
+String idString = "upstairs-lights";
 
 IPAddress server(192,168,91,215);
 
@@ -67,7 +67,6 @@ int shuttgtstate[15];
 int shutcurstate[15];
 int shutinitstate[15];
 bool shutinprogress[15];
-bool interrupt[15];
 bool fanison[15];
 bool fanonhi[15];
 bool pinsset = false;
@@ -138,7 +137,7 @@ void setup(void) {
   for (byte i=0; i < 2; i++) {
     Serial.println(i);
     pwm[i].begin();
-    pwm[i].setPWMFreq(1600);
+    pwm[i].setPWMFreq(1000);
   }
 
   for (byte i=0; i < 1; i++) {

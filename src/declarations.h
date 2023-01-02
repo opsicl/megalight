@@ -75,7 +75,6 @@ extern int shuttgtstate[15];
 extern int shutcurstate[15];
 extern int shutinitstate[15];
 extern bool shutinprogress[15];
-extern bool interrupt[15];
 extern bool fanison[15];
 extern bool fanonhi[15];
 extern long cfgTime;

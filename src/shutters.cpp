@@ -67,13 +67,15 @@ void controlshutter(byte shutter) {
     return;
   }
 
-  byte ctrlindexup = conf.shutters[shutter].uppin / 16;
-  byte uppin = conf.shutters[shutter].uppin - 16*ctrlindexup;
-  byte ctrlindexdn = conf.shutters[shutter].downpin / 16;
-  byte downpin = conf.shutters[shutter].downpin - 16*ctrlindexdn;
-  
+ 
   //if not in progress and target state is different than current state, move shutter
   if (shutcurstate[shutter] != shuttgtstate[shutter]) {
+
+    byte ctrlindexup = conf.shutters[shutter].uppin / 16;
+    byte uppin = conf.shutters[shutter].uppin - 16*ctrlindexup;
+    byte ctrlindexdn = conf.shutters[shutter].downpin / 16;
+    byte downpin = conf.shutters[shutter].downpin - 16*ctrlindexdn;
+   
     byte pin;
     byte ctrlindexp;
     byte otherpin;
@@ -153,10 +155,9 @@ void shuttersbutton(byte butt) {
     }
     if (shortpress[butt]) {
       if (shutinprogress[s]) {
-        interrupt[s] = true;
+        stop_shutter(s);
         shuttgtstate[s] = shutcurstate[s];
       } else {
-        shutinprogress[s] = true;
         shuttgtstate[s] = tgtstate;
       }
       //Serial.print("Shutters button pressed: ");
@@ -164,9 +165,8 @@ void shuttersbutton(byte butt) {
     }
     if (longpressing[butt]) {
       if (millis() - lastLPTime[butt] > 30 and shutinprogress[s]) {
-        interrupt[s] = true;
+        stop_shutter(s);
       } else {
-        shutinprogress[s] = true;
         if (directionup) {
           if (shutcurstate[s] < 100) {
             shuttgtstate[s] = shutcurstate[s] + 1;
