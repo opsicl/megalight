@@ -476,6 +476,7 @@ void loop(void) {
 
     for (byte l = 0; l < conf.nrlights; l++) {
       publish_metric("lights", String(l)+"/brightness", String(li[l]));
+      publish_metric("lights", String(l)+"/brightness_percent", String(topercent(li[l])));
       publish_metric("lights", String(l)+"/dimming", String(dimming[l]));
       //publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
       if (conf.lights[l].tempadj) {

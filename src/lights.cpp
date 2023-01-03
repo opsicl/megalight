@@ -7,18 +7,38 @@
 
 
 
+int topercent(int v) {
+  // calculate y using the formula y = x / (4096 / x)
+
+  if (v == 0) {
+    return 0;
+  }
+
+  float y = (float)v;
+  float x;
+  if (y == 4096) {
+    y = 4097;
+  }
+  x = sqrt((y - 4) * 4096);
+  //scale to 0-100
+  x = x/40.96 + 1;
+
+  return (int)x;
+
+}
+
 void setlight(String lightattr, String payload) {
 
   byte attrindex = lightattr.indexOf("/");
   String lightstr = lightattr.substring(0,attrindex);
-  publish_metric("log","lights_on",lightstr);
+  //publish_metric("log","lights_on",lightstr);
   int light = lightstr.toInt();
 
   //Serial.println(light);
   String attr = lightattr.substring(attrindex + 1,lightattr.length());
   //Serial.println(attr);
 
-  publish_metric("log","lights_on_attr",String(light) + " " + attr);
+  //publish_metric("log","lights_on_attr",String(light) + " " + attr);
   if (attr == "brightness") {
     //Serial.print(light);
     //Serial.print(F(" -> "));
@@ -27,10 +47,37 @@ void setlight(String lightattr, String payload) {
       in[light] = payload.toInt();
     }
     li[light] = payload.toInt();
-    publish_metric("lights", String(light) + "/brightness", String(li[light]));
+    //publish_metric("lights", String(light) + "/brightness", String(li[light]));
 
     //publish_metric("log","lights_on",String(light) + " " + String(in[light]));
   }
+
+  if (attr == "brightness_percent") {
+    //Serial.print(light);
+    //Serial.print(F(" -> "));
+    //Serial.println(value);
+    int p = payload.toInt();
+
+    float y;
+    float x = (float)p * 40.96; // linearily scale
+
+    y = x / (4096 / x) + 4; // do some  nonlinear shit
+
+    if (y > 4095) {
+      y = 4095;
+    }
+
+    //publish_metric("log","lights_percent_input",String(light) + "-->" + String(x));
+    //publish_metric("log","lights_percent_output",String(light) + "-->" + String(y));
+
+    if (in[light] != 0) {
+      in[light] = (int)y;
+    }
+    li[light] = (int)y;
+    //publish_metric("lights", String(light) + "/brightness_percent", payload);
+
+  }
+
 
   if (attr == "colortemp") {
     ct[light] = payload.toInt();
@@ -117,14 +164,22 @@ void applyintensities() {
         pwm[pwmindexc].setPWM(lindexc, 0, si[l]);
         st[l] = ct[l];
       }
-      if (in[l] == si[l]) {
-        if (lastIntSet[l] != 0 and not dimming[l]) {
-          //we just finished setting the lights, sending state
+    }
+    if (in[l] == si[l]) {
+      if (lastIntSet[l] != 0 and dimming[l] == false) {
+        //we just finished setting the lights, sending state
+        if (si[l] == 0) {
+          publish_metric("lights", String(l)+"/onoff", String(0));
+          publish_metric("lights", String(l)+"/brightness", String(li[l]));
+          publish_metric("lights", String(l)+"/brightness_percent", String(topercent(li[l])));
+        } else {
+          publish_metric("lights", String(l)+"/onoff", String(1));
           publish_metric("lights", String(l)+"/brightness", String(si[l]));
-          publish_metric("lights", String(l)+"/colortemp", String(st[l]));
-          publish_metric("log", String(l)+"/dimming", String(dimming[l]));
-          lastIntSet[l] = 0;
+          publish_metric("lights", String(l)+"/brightness_percent", String(topercent(si[l])));
         }
+        publish_metric("lights", String(l)+"/colortemp", String(st[l]));
+        publish_metric("log", String(l)+"/dimming", String(dimming[l]));
+        lastIntSet[l] = 0;
       }
     }
   }
@@ -184,8 +239,8 @@ void lightsbutton(byte butt) {
         if (in[l] > 4095) {
           in[l] = 4095;
         }
-        if (in[l] < 10) {
-          in[l] = 10;
+        if (in[l] < 4) {
+          in[l] = 4;
         }
       //}
       li[l] = in[l];
