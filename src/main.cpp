@@ -13,6 +13,7 @@
 #include "shutters.h"
 #include "fans.h"
 #include <PCF8574.h>
+#include "Version.h"
 
 
 
@@ -472,6 +473,9 @@ void loop(void) {
     //publish_metric("log", "conf_nrlights", String(conf.nrlights));
     //publish_metric("log", "conf_nrfans", String(conf.nrfans));
     //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));
+    
+    publish_metric("log", "version", String(VERSION));
+    publish_metric("log", "build", String(BUILD_TIMESTAMP));
 
 
     for (byte l = 0; l < conf.nrlights; l++) {
