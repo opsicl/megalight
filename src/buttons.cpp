@@ -5,6 +5,23 @@
 #include "shutters.h"
 #include "fans.h"
 
+
+
+void readpcf(byte c) {
+  int res = pcf[c].read8();
+  //publish_metric("log", "pcf"+String(c), String(res));
+  for (byte p = 0; p < 8; p++) {
+    byte idx = c * 8 + p;
+    //publish_metric("log", "btnval"+String(p), String(res >> p & 1));
+    if ((res >> p & 1) == 0) {
+      //publish_metric("log", "btn", String(idx));
+      btn[idx] = true;
+    } else {
+      btn[idx] = false;
+    }
+  }
+}
+
 void handlebuttons() {
   //Serial.print("buttons ");
   //Serial.println(conf.nrbutt);
@@ -17,8 +34,8 @@ void handlebutton(byte butt) {
 
   //Serial.print("here");
   //Serial.println(butt);
-  int press = digitalRead(conf.bmaps[butt].pin);
-  if (press == HIGH) {
+  int press = btn[conf.bmaps[butt].pin];
+  if (press) {
     if (lastpress[butt] == false) {
       lastPressTime[butt] = millis();
       lastpress[butt] = true;
@@ -26,7 +43,7 @@ void handlebutton(byte butt) {
   }
 
   //long press
-  if ((press == HIGH) and (millis() - lastPressTime[butt] > 300)) {
+  if (press  and (millis() - lastPressTime[butt] > 600)) {
     if (not longpressing[butt]) {
       publish_metric("button", String(conf.bmaps[butt].pin)+"/longpress", "1");
     }
@@ -34,10 +51,11 @@ void handlebutton(byte butt) {
   }
 
   //end press
-  if (press == LOW) {
+  if (not press) {
     if (lastpress[butt]) {
       lastpress[butt] = false;
       duration[butt] = millis() - lastPressTime[butt];
+      endpress[butt] = true;
     }
     else {
       duration[butt] = 0;
@@ -49,20 +67,20 @@ void handlebutton(byte butt) {
     }
     longpressing[butt] = false;
     
-    endpress[butt] = true;
   }
 
   //short press
-  if ((duration[butt] > 70) and (millis() - lastLPTime[butt] > 300)) {
+  if ((duration[butt] > 10) and (millis() - lastLPTime[butt] > 1000)) {
     shortpress[butt] = true;
-    publish_metric("button", String(conf.bmaps[butt].pin)+"/shortpress", "1");
 
     //double short press
-    if (millis() - lastShortPress[butt] < 500) {
+    if (millis() - lastShortPress[butt] < 800) {
       //Serial.print("Double press on: ");
       //Serial.println(butt);
       doublepress[butt] = true;
       publish_metric("button", String(conf.bmaps[butt].pin)+"/doublepress", "1");
+    } else {
+      publish_metric("button", String(conf.bmaps[butt].pin)+"/shortpress", "1");
     }
 
     lastShortPress[butt] = millis();
@@ -84,6 +102,13 @@ void handlebutton(byte butt) {
     if (endpress[butt]) {
       endpress[butt] = false;
     }
+    if (shortpress[butt]) {
+      shortpress[butt] = false;
+    }
+    if (doublepress[butt]) {
+      doublepress[butt] = false;
+    }
+
   }
 
 }

@@ -1,37 +1,43 @@
-#include <SPI.h>
-#include <Ethernet.h>
+#include <ETH.h>
+#include <ArduinoOTA.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <string.h>
-#include <avr/wdt.h>
+#include <OneWire.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 #include "declarations.h"
 #include "buttons.h"
 #include "lights.h"
 #include "shutters.h"
 #include "fans.h"
-#include "MemoryFree.h"
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
+#include <PCF8574.h>
+
 
 
 byte id = 0x98;
-String idString = "98";
+String idString = "upstairs-lights";
 
-byte mac[] = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, id };
 IPAddress server(192,168,91,215);
 
 String metricsTopic = "metrics/";
 
 Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
 Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
+PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
-EthernetClient ethClient;
+
+static bool eth_connected = false;
+WiFiClient ethClient;
 PubSubClient mclient(ethClient);
 
 Conf conf;
+long last_irq_time[4];
+bool irq[4];
+bool btn[32];
 long lastPrint;
-long configTime;
+long cfgTime;
 long lastPressTime[35];
 long lastShortPress[35];
 long duration[35];
@@ -45,6 +51,8 @@ byte debugpin;
 bool lastpress[35];
 //color temp
 int ct[35];
+//currently set color temp
+int st[35];
 //intensity
 int in[35];
 //last intensity
@@ -59,7 +67,6 @@ int shuttgtstate[15];
 int shutcurstate[15];
 int shutinitstate[15];
 bool shutinprogress[15];
-bool interrupt[15];
 bool fanison[15];
 bool fanonhi[15];
 bool pinsset = false;
@@ -68,39 +75,69 @@ bool shortpress[35];
 bool doublepress[35];
 bool endpress[35];
 
+void IRAM_ATTR pcf_irq0() {
+  irq[0] = true;
+  last_irq_time[0] = millis();
+}
+void IRAM_ATTR pcf_irq1() {
+  irq[1] = true;
+  last_irq_time[1] = millis();
+}
+void IRAM_ATTR pcf_irq2() {
+  irq[2] = true;
+  last_irq_time[2] = millis();
+}
+void IRAM_ATTR pcf_irq3() {
+  irq[3] = true;
+  last_irq_time[3] = millis();
+}
+
+
+
+
 void callback(char* topic, byte* payload, unsigned int length);
 
 void setup(void) {
-  // change the timers frequency to try to avoid flickering
-  //int myEraser = 7;
-  //TCCR1B &= ~myEraser;
-  //TCCR2B &= ~myEraser;
-  //TCCR3B &= ~myEraser;
-  //TCCR4B &= ~myEraser;
-
-  //// frequencyes:
-  ////  prescaler = 1 ---> PWM frequency is 31000 Hz
-  ////  prescaler = 2 ---> PWM frequency is 4000 Hz
-  ////  prescaler = 3 ---> PWM frequency is 490 Hz (default value)
-  ////  prescaler = 4 ---> PWM frequency is 120 Hz
-  ////  prescaler = 5 ---> PWM frequency is 30 Hz
-  ////  prescaler = 6 ---> PWM frequency is <20 Hz
-  //int myPrescaler = 2;
-
-  ////TCCR0B will not be touched as it is used as main timer for millis() and other internals
-  ////pins 13 and 4 should not be used as light controllers for this reason
-  //TCCR1B |= myPrescaler; // pins 11,12
-  //TCCR2B |= myPrescaler; // pins 9,10
-  //TCCR3B |= myPrescaler; // pins 2,3,5
-  //TCCR4B |= myPrescaler; // pins 6,7,8
   Serial.begin(9600); //Begin serial communication
   Serial.println(F("Arduino Lights/Shutters controller")); //Print a message
+
+  ETH.begin();
+  //OTA
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
+  ArduinoOTA.begin();
+  //END OTA
+
 
 
   for (byte i=0; i < 2; i++) {
     Serial.println(i);
     pwm[i].begin();
-    pwm[i].setPWMFreq(1600);
+    pwm[i].setPWMFreq(1000);
   }
 
   for (byte i=0; i < 1; i++) {
@@ -109,19 +146,21 @@ void setup(void) {
     onoff[i].setPWMFreq(100);
   }
 
-
-  //// Pins 10,4, 50, 51, and 52 are used by the ethernet shield, avoid trying to use them for anything else
-  //// The 11 PWM usable pins on the mega are: 2,3,5,6,7,8,9,11,12,45,46
-
-  //// set all pins low for safety
-  for (byte pin = 0; pin <= 54; pin++) {
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, LOW);
+  for (byte c=0; c<4; c++) {
+    pcf[c].begin();
+    for (byte p=0; p<8; p++) {
+      pcf[c].write(p, 1);
+    }
   }
-  //enable the hardware watchdog at 2s
-  wdt_enable(WDTO_4S);
+  pinMode(0, INPUT_PULLUP);
+  pinMode(1, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  pinMode(32, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
+  attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
+  attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
+  attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
 
-  
 
   metricsTopic += idString;
   Serial.println(F("Setup done"));
@@ -145,12 +184,12 @@ void publish_metric (String metric, String tag, String value) {
 
 }
 
-void configure(byte* payload) {
+void configure(String payload) {
 
   //Serial.println(F("Got reconfiguration request"));
   //publish_metric("config", "received", String(1));
-  //StaticJsonDocument<1500> jconf;
-  DynamicJsonDocument jconf(1300);
+  //StaticJsonDocument<256> jconf;
+  DynamicJsonDocument jconf(4096);
   DeserializationError error = deserializeJson(jconf, payload);
   // Test if parsing succeeds.
   if (error) {
@@ -160,10 +199,16 @@ void configure(byte* payload) {
 
     return;
   }
+  publish_metric("config", "deserialize", "success");
+
 
   conf.nrlights = jconf["l"].size();
   for (byte i = 0; i < conf.nrlights; i++) {
-    conf.lights[i].tempadj = jconf["l"][i]["t"];
+    if (jconf["l"][i]["t"] == 1) {
+      conf.lights[i].tempadj = true;
+    } else {
+      conf.lights[i].tempadj = false;
+    }
     conf.lights[i].cpin = jconf["l"][i]["c"];
     if (conf.lights[i].tempadj) {
       conf.lights[i].wpin = jconf["l"][i]["w"];
@@ -215,16 +260,12 @@ void applystoredconfig() {
 
 
 boolean reconnect() {
-  Ethernet.init();
-  //delay(100);
-  if (Ethernet.begin(mac) != 0) {
-    //Serial.println(Ethernet.localIP());
-    mclient.setBufferSize(1024);
-    mclient.setServer(server, 1883);
-    mclient.setCallback(callback);
-  }
-  String client = "arduinoClient_" + idString;
-  if (mclient.connect(client.c_str())) {
+  mclient.setBufferSize(4096);
+  mclient.setServer(server, 1883);
+  mclient.setCallback(callback);
+
+
+  if (mclient.connect(idString.c_str())) {
 
     // ... and resubscribe
     //char topic[20];
@@ -257,6 +298,17 @@ boolean reconnect() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
+
+  char charpl[length+1];  //a buffer to hold the string
+  memcpy(charpl, payload, length); //copy the payload to the buffer
+  charpl[length] = '\0';
+  String strPayload = String(charpl);
+  String strTopic = String(topic);
+  //log("Received message on topic: " + strTopic);
+  //log(stringpl);
+
+  //publish_metric("log", "msg_received_size", String(length));
+  //publish_metric("log", "msg_received_topic", strTopic);
   //Serial.print("Message arrived [");
   //Serial.print(topic);
   //Serial.print("] ");
@@ -264,28 +316,35 @@ void callback(char* topic, byte* payload, unsigned int length) {
   //for (unsigned int i=0;i<length;i++) {
   //  Serial.print((char)payload[i]);
   //}
-  if (String(topic).substring(3,10) == "lights/") {
+
+
+  String lightsprefix = idString + "/lights/";
+  String shuttersprefix = idString + "/shutters/";
+  String fansprefix = idString + "/fans/";
+
+  if (strTopic.indexOf(lightsprefix) == 0) {
     //Serial.print(F("got light "));
 
-    String lightattr = String(topic).substring(10,String(topic).length());
-    setlight(lightattr,payload,length);
-  }
-  if (String(topic).substring(3,12) == "shutters/") {
-    String shutterattr = String(topic).substring(12,String(topic).length());
-    //Serial.print("Shutter command via MQTT ");
-    //Serial.println(shutter.toInt());
-    setshutter(shutterattr,payload,length);
-  }
-  if (String(topic).substring(3,8) == "fans/") {
-    String fanattr = String(topic).substring(8,String(topic).length());
-    //Serial.print("Fan command via MQTT ");
-    //Serial.println(shutter.toInt());
-    setfan(fanattr,payload,length);
+    String lightattr = String(topic).substring(lightsprefix.length(),strTopic.length());
+    setlight(lightattr,strPayload);
   }
 
+  if (strTopic.indexOf(shuttersprefix) == 0) {
+    //Serial.print(F("got light "));
 
-  if (String(topic) == "98/setconfig") {
-    configure(payload);
+    String shutterattr = String(topic).substring(shuttersprefix.length(),strTopic.length());
+    setshutter(shutterattr,strPayload);
+  }
+
+  if (strTopic.indexOf(fansprefix) == 0) {
+    //Serial.print(F("got light "));
+
+    String fanattr = String(topic).substring(fansprefix.length(),strTopic.length());
+    setfan(fanattr,strPayload);
+  }
+
+  if (strTopic == idString + "/setconfig") {
+    configure(strPayload);
   }
 
   //Serial.println();
@@ -363,9 +422,9 @@ int pltoint(byte* payload, unsigned int length) {
 
 void loop(void) { 
 
-  wdt_reset();
+  //OTA code update
+  ArduinoOTA.handle();
 
-  Ethernet.maintain();
   if (!mclient.connected()) {
     //attempt to reconnect to mqtt every 20s
     if (millis() - lastReconnectAttempt > 20000 or lastReconnectAttempt == 0) {
@@ -374,7 +433,7 @@ void loop(void) {
       if (reconnect()) {
         lastReconnectAttempt = 0;
         mclient.publish("configreq",idString.c_str());
-        configTime = millis();
+        cfgTime = millis();
       }
     }
   }
@@ -384,50 +443,71 @@ void loop(void) {
 
 
   //alow 5s to receive config, else use the locally stored one
-  if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0)  {
-    if (millis() - configTime > 5000) {
+  if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0 and conf.nrbutt == 0)  {
+    if (millis() - cfgTime > 5000) {
       //applystoredconfig();
       //if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0) {
         //Serial.println("publishing configreq");
         mclient.publish("configreq",idString.c_str());
-        configTime = millis();
+        cfgTime = millis();
       }
   }
   
 
   else {
-    //Serial.println("here1");
-    if (not pinsset) {
-      setpins();
+    for (byte p; p < 4; p++) {
+      if (irq[p] and millis() - last_irq_time[p] >= 5) {
+        readpcf(p);
+        //publish_metric("log", "handling_irq", String(p));
+        irq[p] = false;
+      }
     }
-    //Serial.println("here2");
     handlebuttons();
-    //Serial.println("here3");
     applyintensities();
-    //Serial.println("here4");
     controlshutters();
-    //Serial.println("here5");
-    // Print debug info evrey 10s
-    //if (millis() - lastVarDump > 10000) {
-    //  Serial.print("shutter 0 current state ");
-    //  Serial.println(shutcurstate[0]);
-    //  Serial.print("target state ");
-    //  Serial.println(shuttgtstate[0]);
-    //  Serial.print("pin last used ");
-    //  Serial.println(debugpin);
-    //  lastVarDump = millis();
-    //}
   }
 
-  //report current state every 30s
-  if (millis() - lastReport > 5000) {
+  //report current state every 60s
+  if (millis() - lastReport > 60000) {
+    //publish_metric("log", "conf_nrlights", String(conf.nrlights));
+    //publish_metric("log", "conf_nrfans", String(conf.nrfans));
+    //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));
 
-    publish_metric("freeram", "mem", String(freeMemory()));
-    Serial.println("shutters: "+ String(conf.nrshutters));
+
+    for (byte l = 0; l < conf.nrlights; l++) {
+      publish_metric("lights", String(l)+"/brightness", String(li[l]));
+      publish_metric("lights", String(l)+"/brightness_percent", String(topercent(li[l])));
+      publish_metric("lights", String(l)+"/dimming", String(dimming[l]));
+      //publish_metric("log", String(l) +" tempadj", String(conf.lights[l].tempadj));
+      if (conf.lights[l].tempadj) {
+        publish_metric("lights", String(l)+"/colortemp", String(ct[l]));
+      }
+      if (in[l] > 0) {
+        publish_metric("lights", String(l)+"/onoff", String(1));
+      } else {
+        publish_metric("lights", String(l)+"/onoff", String(0));
+      }
+
+    }
+
     for (byte s = 0; s < conf.nrshutters; s++) {
-      Serial.println("publishing shutter "+ String(s));
       publish_metric("shutters", String(s)+"/open", String(shutcurstate[s]));
     }
+    //for (byte b = 0; b < conf.nrbutt; b++) {
+    //  publish_metric("buttons", String(b)+"/pressed", String(btn[b]));
+    //}
+
+    for (byte f = 0; f < conf.nrfans; f++) {
+      byte speed = 0;
+      if (fanison[f]) {
+        speed = 1;
+        if (fanonhi[f]) {
+          speed = 2;
+        }
+      }
+      publish_metric("fans", String(f)+"/speed", String(speed));
+    }
+
 
     lastReport = millis();
 

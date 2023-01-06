@@ -3,11 +3,11 @@
 #include "buttons.h"
 #include "fans.h"
 
-void setfan(String fanattr, byte* payload, unsigned int length) {
+void setfan(String fanattr, String payload) {
 
   byte attrindex;
   int fan;
-  if (fanattr[1] == "/") {
+  if (fanattr[1] == String("/")[0]) {
     fan = fanattr[0] - '0';
     attrindex = 1;
   } else {
@@ -15,15 +15,12 @@ void setfan(String fanattr, byte* payload, unsigned int length) {
     attrindex = 2;
   }
 
-  String attr = fanattr.substring(attrindex,(attrindex + 5));
-  //Serial.print(fan);
-  //Serial.print(F(" -> "));
-  //Serial.println(attr);
-  
+  String attr = fanattr.substring(attrindex +1 ,attrindex + 6);
+  publish_metric("log","fans_attr",String(attr) + " " + attr);
+
 
   if (attr == "speed") {
-    payload[length] = '\0';
-    int value = atoi((char *)payload);
+    int value = payload.toInt();
     //Serial.println(value);
 
     byte hiindex = conf.fans[fan].hispdpin/16;
