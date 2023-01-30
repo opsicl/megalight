@@ -138,8 +138,8 @@ void setup(void) {
   for (byte i=0; i < 2; i++) {
     Serial.println(i);
     pwm[i].begin();
-    int rndfreq = rand() % 601 + 1000;
-    pwm[i].setPWMFreq(rndfreq);
+    //int rndfreq = rand() % 601 + 1000;
+    pwm[i].setPWMFreq(1200);
   }
 
   for (byte i=0; i < 1; i++) {
