@@ -18,7 +18,7 @@
 
 
 byte id = 0x98;
-String idString = "upstairs-lights";
+String idString = "downstairs-lights";
 
 IPAddress server(192,168,91,215);
 
