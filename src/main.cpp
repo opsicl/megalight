@@ -33,6 +33,7 @@ static bool eth_connected = false;
 WiFiClient ethClient;
 PubSubClient mclient(ethClient);
 
+bool configsuccess = false;
 Conf conf;
 long last_irq_time[4];
 bool irq[4];
@@ -203,53 +204,74 @@ void configure(String payload) {
   }
   publish_metric("config", "deserialize", "success");
 
+//Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
+//PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
-  conf.nrlights = jconf["l"].size();
-  for (byte i = 0; i < conf.nrlights; i++) {
-    if (jconf["l"][i]["t"] == 1) {
-      conf.lights[i].tempadj = true;
-    } else {
-      conf.lights[i].tempadj = false;
-    }
-    conf.lights[i].cpin = jconf["l"][i]["c"];
-    if (conf.lights[i].tempadj) {
-      conf.lights[i].wpin = jconf["l"][i]["w"];
-    }
-  }
 
-  conf.nrshutters = jconf["s"].size();
-  for (byte i = 0; i < conf.nrshutters; i++) {
-    conf.shutters[i].uppin = jconf["s"][i]["u"];
-    conf.shutters[i].downpin = jconf["s"][i]["d"];
-    conf.shutters[i].time = jconf["s"][i]["t"];
-  }
 
-  conf.nrfans = jconf["f"].size();
-  for (byte i = 0; i < conf.nrfans; i++) {
-    conf.fans[i].hispdpin = jconf["f"][i]["h"];
-    conf.fans[i].lowspdpin = jconf["f"][i]["l"];
-  }
-
-  conf.nrbutt = jconf["b"].size();
-  //Serial.println(conf.nrbutt);
-  for (byte i = 0; i < conf.nrbutt; i++) {
-
-    conf.bmaps[i].pin = jconf["b"][i]["p"];
-    conf.bmaps[i].light = jconf["b"][i]["l"];
-    conf.bmaps[i].fan = jconf["b"][i]["f"];
-    conf.bmaps[i].shutterup = jconf["b"][i]["su"];
-    conf.bmaps[i].shutterdown = jconf["b"][i]["sd"];
-    conf.bmaps[i].nrdev = jconf["b"][i]["d"].size();
-    for (byte j = 0; j < conf.bmaps[i].nrdev; j++) {
-      conf.bmaps[i].devices[j]=jconf["b"][i]["d"][j];
+  //test if l is in jconf
+  if (jconf.containsKey("l")) {
+    conf.nrlights = jconf["l"].size();
+    pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
+    for (byte i = 0; i < conf.nrlights; i++) {
+      if (jconf["l"][i]["t"] == 1) {
+        conf.lights[i].tempadj = true;
+      } else {
+        conf.lights[i].tempadj = false;
+      }
+      conf.lights[i].cpin = jconf["l"][i]["c"];
+      if (conf.lights[i].tempadj) {
+        conf.lights[i].wpin = jconf["l"][i]["w"];
+      }
     }
   }
+
+  if (jconf.containsKey("s") {
+    conf.nrshutters = jconf["s"].size();
+    for (byte i = 0; i < conf.nrshutters; i++) {
+      conf.shutters[i].uppin = jconf["s"][i]["u"];
+      conf.shutters[i].downpin = jconf["s"][i]["d"];
+      conf.shutters[i].time = jconf["s"][i]["t"];
+    }
+  }
+
+  if (jconf.containsKey("f") {
+    conf.nrfans = jconf["f"].size();
+    for (byte i = 0; i < conf.nrfans; i++) {
+      conf.fans[i].hispdpin = jconf["f"][i]["h"];
+      conf.fans[i].lowspdpin = jconf["f"][i]["l"];
+    }
+  }
+
+  if (jconf.containsKey("b") {
+    conf.nrbutt = jconf["b"].size();
+    //Serial.println(conf.nrbutt);
+    for (byte i = 0; i < conf.nrbutt; i++) {
+
+      conf.bmaps[i].pin = jconf["b"][i]["p"];
+      conf.bmaps[i].light = jconf["b"][i]["l"];
+      conf.bmaps[i].fan = jconf["b"][i]["f"];
+      conf.bmaps[i].shutterup = jconf["b"][i]["su"];
+      conf.bmaps[i].shutterdown = jconf["b"][i]["sd"];
+      conf.bmaps[i].nrdev = jconf["b"][i]["d"].size();
+      for (byte j = 0; j < conf.bmaps[i].nrdev; j++) {
+        conf.bmaps[i].devices[j]=jconf["b"][i]["d"][j];
+      }
+    }
+  }
+  
+  if (config.nrbutt > 0 or config.nrlights > 0 or config.nrshutters > 0 or config.nrfans > 0) {
+    configsuccess = true;
+    publish_metric("config", "accepted", String(1));
+    //write config to eeprom
+    //i suspect issues with the eeprom
+    //EEPROM.put(0, conf);
+  } else {
+    configsuccess = false;
+    publish_metric("config", "accepted", String(0));
+  }
+
   pinsset = false;
-  publish_metric("config", "accepted", String(1));
-  //write config to eeprom
-  //i suspect issues with the eeprom
-  //EEPROM.put(0, conf);
-
 }
 
 
