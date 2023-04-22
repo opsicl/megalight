@@ -264,7 +264,7 @@ void configure(String payload) {
     }
   }
   
-  if (config.nrbutt > 0 or config.nrlights > 0 or config.nrshutters > 0 or config.nrfans > 0) {
+  if (conf.nrbutt > 0 or conf.nrlights > 0 or conf.nrshutters > 0 or conf.nrfans > 0) {
     configsuccess = true;
     publish_metric("config", "accepted", String(1));
     //write config to eeprom
