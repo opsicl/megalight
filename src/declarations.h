@@ -31,6 +31,9 @@ struct bmap {
 };
 
 struct Conf {
+  byte nrpwm;
+  byte nronoff;
+  byte nrpcf;
   byte nrlights;
   byte nrshutters;
   byte nrfans;
