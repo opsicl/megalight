@@ -258,19 +258,19 @@ void configure(String payload) {
   }
 
   conf.nrbutt = 0;
-  if (jconf.containsKey("b")) {
-    conf.nrbutt = jconf["b"].size();
+  if (jconf.containsKey("buttons")) {
+    conf.nrbutt = jconf["buttons"].size();
     //Serial.println(conf.nrbutt);
     for (byte i = 0; i < conf.nrbutt; i++) {
 
-      conf.bmaps[i].pin = jconf["b"][i]["p"];
-      conf.bmaps[i].light = jconf["b"][i]["l"];
-      conf.bmaps[i].fan = jconf["b"][i]["f"];
-      conf.bmaps[i].shutterup = jconf["b"][i]["su"];
-      conf.bmaps[i].shutterdown = jconf["b"][i]["sd"];
-      conf.bmaps[i].nrdev = jconf["b"][i]["d"].size();
+      conf.bmaps[i].pin = jconf["buttons"][i]["p"];
+      conf.bmaps[i].light = jconf["buttons"][i]["l"];
+      conf.bmaps[i].fan = jconf["buttons"][i]["f"];
+      conf.bmaps[i].shutterup = jconf["buttons"][i]["su"];
+      conf.bmaps[i].shutterdown = jconf["buttons"][i]["sd"];
+      conf.bmaps[i].nrdev = jconf["buttons"][i]["d"].size();
       for (byte j = 0; j < conf.bmaps[i].nrdev; j++) {
-        conf.bmaps[i].devices[j]=jconf["b"][i]["d"][j];
+        conf.bmaps[i].devices[j]=jconf["buttons"][i]["d"][j];
       }
     }
   }
