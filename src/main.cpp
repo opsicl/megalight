@@ -226,7 +226,7 @@ void configure(String payload) {
     }
   }
 
-  if (jconf.containsKey("s") {
+  if (jconf.containsKey("s")) {
     conf.nrshutters = jconf["s"].size();
     for (byte i = 0; i < conf.nrshutters; i++) {
       conf.shutters[i].uppin = jconf["s"][i]["u"];
