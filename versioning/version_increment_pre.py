@@ -4,6 +4,9 @@ import os
 from sys import exit
 
 Import("env")
+print("Current CLI targets", COMMAND_LINE_TARGETS)
+print("Current Build targets", BUILD_TARGETS)
+
 
 #function to read short git sha
 def get_git_short_sha():
@@ -28,7 +31,8 @@ VERSION_HEADER = 'Version.h'
 
 if not is_git_clean():
     print('Git working directory is not clean. Please commit all changes before building')
-    exit(1)
+    if len(COMMAND_LINE_TARGETS) > 0 and COMMAND_LINE_TARGETS[0] == 'upload':
+        exit(1)
 
 VERSION = get_git_short_sha()
 

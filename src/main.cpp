@@ -241,7 +241,7 @@ void configure(String payload) {
   }
 
   if (jconf.containsKey("pcf")) {
-    conf.pcf = jconf["pcf"].size();
+    conf.nrpcf = jconf["pcf"].size();
     for (byte ctrl=0; ctrl < jconf["pcf"].size(); ctrl++) {
       pcf[ctrl] = PCF8574(readHex(jconf["pcf"][ctrl]));
     }
@@ -523,9 +523,15 @@ void loop(void) {
         irq[p] = false;
       }
     }
-    handlebuttons();
-    applyintensities();
-    controlshutters();
+    if (conf.nrbutt > 0) {
+      handlebuttons();
+    }
+    if (conf.nrlights > 0) {
+      applyintensities();
+    }
+    if (conf.nrshutters > 0) {
+      controlshutters();
+    }
   }
 
   //report current state every 60s
