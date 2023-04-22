@@ -14,19 +14,23 @@
 #include "fans.h"
 #include <PCF8574.h>
 #include "Version.h"
+#include "ControllerName.h"
 
 
 
 byte id = 0x98;
-String idString = "downstairs-lights";
+String idString = CONTROLLER_NAME;
 
 IPAddress server(192,168,91,215);
 
 String metricsTopic = "metrics/";
 
-Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
-Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
-PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
+Adafruit_PWMServoDriver pwm[4]
+//{Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
+Adafruit_PWMServoDriver onoff[4]
+//{Adafruit_PWMServoDriver(0x41)};
+PCF8574 pcf[8]
+//{PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
 
 static bool eth_connected = false;

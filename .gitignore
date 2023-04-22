@@ -6,3 +6,4 @@
 *.swp
 config/
 include/Version.h
+include/ControllerName.h
