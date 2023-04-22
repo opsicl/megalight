@@ -25,11 +25,11 @@ IPAddress server(192,168,91,215);
 
 String metricsTopic = "metrics/";
 
-Adafruit_PWMServoDriver pwm[4]
+Adafruit_PWMServoDriver pwm[4];
 //{Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
-Adafruit_PWMServoDriver onoff[4]
+Adafruit_PWMServoDriver onoff[4];
 //{Adafruit_PWMServoDriver(0x41)};
-PCF8574 pcf[8]
+PCF8574 pcf[8];
 //{PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
 
