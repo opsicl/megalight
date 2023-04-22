@@ -235,7 +235,7 @@ void configure(String payload) {
     }
   }
 
-  if (jconf.containsKey("f") {
+  if (jconf.containsKey("f")) {
     conf.nrfans = jconf["f"].size();
     for (byte i = 0; i < conf.nrfans; i++) {
       conf.fans[i].hispdpin = jconf["f"][i]["h"];
@@ -243,7 +243,7 @@ void configure(String payload) {
     }
   }
 
-  if (jconf.containsKey("b") {
+  if (jconf.containsKey("b")) {
     conf.nrbutt = jconf["b"].size();
     //Serial.println(conf.nrbutt);
     for (byte i = 0; i < conf.nrbutt; i++) {
