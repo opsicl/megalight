@@ -99,6 +99,21 @@ void IRAM_ATTR pcf_irq3() {
 }
 
 
+//function to read a hex value from a string of the type "0x4b" and return 0x4b
+byte readHex(String str) {
+  byte val = 0;
+  for (byte i=0; i<str.length(); i++) {
+    char c = str.charAt(i);
+    if (c >= '0' && c <= '9') {
+      val = val * 16 + c - '0';
+    } else if (c >= 'a' && c <= 'f') {
+      val = val * 16 + c - 'a' + 10;
+    } else if (c >= 'A' && c <= 'F') {
+      val = val * 16 + c - 'A' + 10;
+    }
+  }
+  return val;
+}
 
 
 void callback(char* topic, byte* payload, unsigned int length);
@@ -211,26 +226,44 @@ void configure(String payload) {
 //Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
 //PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
+  if (jconf.containsKey("pwm")) {
+    conf.nrpwm = jconf["pwm"].size();
+    for (byte ctrl=0; ctrl < jconf["pwm"].size(); ctrl++) {
+      pwm[ctrl] = Adafruit_PWMServoDriver(readHex(jconf["pwm"][ctrl]));
+    }
+  }
 
+  if (jconf.containsKey("onoff")) {
+    conf.nronoff = jconf["onoff"].size();
+    for (byte ctrl=0; ctrl < jconf["onoff"].size(); ctrl++) {
+      onoff[ctrl] = Adafruit_PWMServoDriver(readHex(jconf["onoff"][ctrl]));
+    }
+  }
 
-  //test if l is in jconf
-  if (jconf.containsKey("l")) {
-    conf.nrlights = jconf["l"].size();
-    pwm = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
+  if (jconf.containsKey("pcf")) {
+    conf.pcf = jconf["pcf"].size();
+    for (byte ctrl=0; ctrl < jconf["pcf"].size(); ctrl++) {
+      pcf[ctrl] = PCF8574(readHex(jconf["pcf"][ctrl]));
+    }
+  }
+
+  if (jconf.containsKey("lights")) {
+    conf.nrlights = jconf["lights"].size();
+
     for (byte i = 0; i < conf.nrlights; i++) {
-      if (jconf["l"][i]["t"] == 1) {
+      if (jconf["lights"][i]["tempadsjustable"] == 1) {
         conf.lights[i].tempadj = true;
       } else {
         conf.lights[i].tempadj = false;
       }
-      conf.lights[i].cpin = jconf["l"][i]["c"];
+      conf.lights[i].cpin = jconf["lights"][i]["cold_pin"];
       if (conf.lights[i].tempadj) {
-        conf.lights[i].wpin = jconf["l"][i]["w"];
+        conf.lights[i].wpin = jconf["lights"][i]["warm_pin"];
       }
     }
   }
 
-  if (jconf.containsKey("s")) {
+  if (jconf.containsKey("shutters")) {
     conf.nrshutters = jconf["s"].size();
     for (byte i = 0; i < conf.nrshutters; i++) {
       conf.shutters[i].uppin = jconf["s"][i]["u"];
