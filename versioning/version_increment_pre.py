@@ -23,7 +23,6 @@ def is_git_clean():
         #return true if clean
         return not status
 
-VERSION_FILE = 'version'
 VERSION_HEADER = 'Version.h'
 
 
@@ -32,10 +31,6 @@ if not is_git_clean():
     exit(1)
 
 VERSION = get_git_short_sha()
-
-with open(VERSION_FILE, 'w+') as FILE:
-    FILE.write(VERSION)
-    print('Version: {}'.format(VERSION))
 
 HEADER_FILE = """
 // AUTO GENERATED FILE, DO NOT EDIT
@@ -58,6 +53,4 @@ else:
 
 with open(VERSION_HEADER, 'w+') as FILE:
     FILE.write(HEADER_FILE)
-
-open('.version_no_increment', 'a').close()
 
