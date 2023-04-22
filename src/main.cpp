@@ -216,7 +216,7 @@ void configure(String payload) {
   //test if l is in jconf
   if (jconf.containsKey("l")) {
     conf.nrlights = jconf["l"].size();
-    pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
+    pwm = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
     for (byte i = 0; i < conf.nrlights; i++) {
       if (jconf["l"][i]["t"] == 1) {
         conf.lights[i].tempadj = true;
