@@ -155,35 +155,6 @@ void setup(void) {
 
 
 
-  for (byte i=0; i < 2; i++) {
-    Serial.println(i);
-    pwm[i].begin();
-    //int rndfreq = rand() % 601 + 1000;
-    pwm[i].setPWMFreq(1200);
-  }
-
-  for (byte i=0; i < 1; i++) {
-    Serial.println(i);
-    onoff[i].begin();
-    onoff[i].setPWMFreq(100);
-  }
-
-  for (byte c=0; c<4; c++) {
-    pcf[c].begin();
-    for (byte p=0; p<8; p++) {
-      pcf[c].write(p, 1);
-    }
-  }
-  pinMode(0, INPUT_PULLUP);
-  pinMode(1, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(32, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
-  attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
-  attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
-  attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
-
-
   metricsTopic += idString;
   Serial.println(F("Setup done"));
   //request config on startup
@@ -314,6 +285,37 @@ void configure(String payload) {
     configsuccess = false;
     publish_metric("config", "accepted", String(0));
   }
+
+  for (byte i=0; i < conf.nrpwm; i++) {
+    Serial.println(i);
+    pwm[i].begin();
+    //int rndfreq = rand() % 601 + 1000;
+    pwm[i].setPWMFreq(1200);
+  }
+
+  for (byte i=0; i < conf.nronoff; i++) {
+    Serial.println(i);
+    onoff[i].begin();
+    onoff[i].setPWMFreq(100);
+  }
+
+  for (byte c=0; c < conf.nrpcf; c++) {
+    pcf[c].begin();
+    for (byte p=0; p<8; p++) {
+      pcf[c].write(p, 1);
+    }
+  }
+  if (conf.nrpcf > 0) {
+    pinMode(0, INPUT_PULLUP);
+    pinMode(1, INPUT_PULLUP);
+    pinMode(3, INPUT_PULLUP);
+    pinMode(32, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
+    attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
+    attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
+    attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
+  }
+
 
   pinsset = false;
 }
