@@ -240,20 +240,20 @@ void configure(String payload) {
 
   conf.nrshutters = 0;
   if (jconf.containsKey("shutters")) {
-    conf.nrshutters = jconf["s"].size();
+    conf.nrshutters = jconf["shutters"].size();
     for (byte i = 0; i < conf.nrshutters; i++) {
-      conf.shutters[i].uppin = jconf["s"][i]["u"];
-      conf.shutters[i].downpin = jconf["s"][i]["d"];
-      conf.shutters[i].time = jconf["s"][i]["t"];
+      conf.shutters[i].uppin = jconf["shutters"][i]["up_pin"];
+      conf.shutters[i].downpin = jconf["shutters"][i]["down_pin"];
+      conf.shutters[i].time = jconf["shutters"][i]["travel_time"];
     }
   }
 
   conf.nrfans = 0;
-  if (jconf.containsKey("f")) {
-    conf.nrfans = jconf["f"].size();
+  if (jconf.containsKey("fans")) {
+    conf.nrfans = jconf["fans"].size();
     for (byte i = 0; i < conf.nrfans; i++) {
-      conf.fans[i].hispdpin = jconf["f"][i]["h"];
-      conf.fans[i].lowspdpin = jconf["f"][i]["l"];
+      conf.fans[i].hispdpin = jconf["fans"][i]["high_speed_pin"];
+      conf.fans[i].lowspdpin = jconf["fans"][i]["low_speed_pin"];
     }
   }
 
