@@ -226,7 +226,7 @@ void configure(String payload) {
     conf.nrlights = jconf["lights"].size();
 
     for (byte i = 0; i < conf.nrlights; i++) {
-      if (jconf["lights"][i]["tempadsjustable"] == 1) {
+      if (jconf["lights"][i]["tempadjustable"] == 1) {
         conf.lights[i].tempadj = true;
       } else {
         conf.lights[i].tempadj = false;
