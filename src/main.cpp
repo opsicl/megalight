@@ -226,6 +226,7 @@ void configure(String payload) {
 //Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
 //PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
+  conf.nrpwm = 0;
   if (jconf.containsKey("pwm")) {
     conf.nrpwm = jconf["pwm"].size();
     for (byte ctrl=0; ctrl < jconf["pwm"].size(); ctrl++) {
@@ -233,6 +234,7 @@ void configure(String payload) {
     }
   }
 
+  conf.nronoff = 0;
   if (jconf.containsKey("onoff")) {
     conf.nronoff = jconf["onoff"].size();
     for (byte ctrl=0; ctrl < jconf["onoff"].size(); ctrl++) {
@@ -240,6 +242,7 @@ void configure(String payload) {
     }
   }
 
+  conf.nrpcf = 0;
   if (jconf.containsKey("pcf")) {
     conf.nrpcf = jconf["pcf"].size();
     for (byte ctrl=0; ctrl < jconf["pcf"].size(); ctrl++) {
@@ -247,6 +250,7 @@ void configure(String payload) {
     }
   }
 
+  conf.nrlights = 0;
   if (jconf.containsKey("lights")) {
     conf.nrlights = jconf["lights"].size();
 
@@ -263,6 +267,7 @@ void configure(String payload) {
     }
   }
 
+  conf.nrshutters = 0;
   if (jconf.containsKey("shutters")) {
     conf.nrshutters = jconf["s"].size();
     for (byte i = 0; i < conf.nrshutters; i++) {
@@ -272,6 +277,7 @@ void configure(String payload) {
     }
   }
 
+  conf.nrfans = 0;
   if (jconf.containsKey("f")) {
     conf.nrfans = jconf["f"].size();
     for (byte i = 0; i < conf.nrfans; i++) {
@@ -280,6 +286,7 @@ void configure(String payload) {
     }
   }
 
+  conf.nrbutt = 0;
   if (jconf.containsKey("b")) {
     conf.nrbutt = jconf["b"].size();
     //Serial.println(conf.nrbutt);
