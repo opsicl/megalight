@@ -528,7 +528,7 @@ void loop(void) {
     for (byte p; p < 4; p++) {
       if (irq[p] and millis() - last_irq_time[p] >= 5) {
         readpcf(p);
-        //publish_metric("log", "handling_irq", String(p));
+        publish_metric("log", "handling_irq", String(p));
         irq[p] = false;
       }
     }
