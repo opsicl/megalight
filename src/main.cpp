@@ -462,19 +462,15 @@ void setpins() {
     //digitalWrite(conf.shutters[s].downpin, LOW);
   }
 
-//  for (byte f = 0; f < conf.nrfans; f++) {
-//    //Serial.print("setting pin ");
-//    //Serial.print(conf.fans[f].hispdpin);
-//    //Serial.println(" as output");
-//    //Serial.print("setting pin ");
-//    //Serial.print(conf.fans[f].lowspdpin);
-//    //Serial.println(" as output");
-//
-//    pinMode(conf.fans[f].lowspdpin, OUTPUT);
-//    pinMode(conf.fans[f].hispdpin, OUTPUT);
-//    digitalWrite(conf.fans[f].lowspdpin, LOW);
-//    digitalWrite(conf.fans[f].hispdpin, LOW);
-//  }
+  for (byte f = 0; f < conf.nrfans; f++) {
+    byte ctrlindexlo = conf.fans[f].lospdpin / 16;
+    byte lopin = conf.fans[f].lospdpin - 16*ctrlindexlo;
+    //byte ctrlindexdn = conf.shutters[s].downpin / 16;
+    //byte downpin = conf.shutters[s].downpin - 16*ctrlindexdn;
+
+    onoff[ctrlindexlo].setPWM(uppin, 0, 4096);
+
+  }
 
 
 
