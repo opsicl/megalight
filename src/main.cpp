@@ -209,6 +209,7 @@ void configure(String payload) {
   if (jconf.containsKey("onoff")) {
     conf.nronoff = jconf["onoff"].size();
     for (byte ctrl=0; ctrl < jconf["onoff"].size(); ctrl++) {
+      publish_metric("log", "onoff", String(readHex(jconf["onoff"][ctrl])));
       onoff[ctrl] = Adafruit_PWMServoDriver(readHex(jconf["onoff"][ctrl]));
     }
   }
