@@ -463,8 +463,8 @@ void setpins() {
   }
 
   for (byte f = 0; f < conf.nrfans; f++) {
-    byte ctrlindexlo = conf.fans[f].lospdpin / 16;
-    byte lopin = conf.fans[f].lospdpin - 16*ctrlindexlo;
+    byte ctrlindexlo = conf.fans[f].lowspdpin / 16;
+    byte lopin = conf.fans[f].lowspdpin - 16*ctrlindexlo;
     //byte ctrlindexdn = conf.shutters[s].downpin / 16;
     //byte downpin = conf.shutters[s].downpin - 16*ctrlindexdn;
 
