@@ -468,7 +468,7 @@ void setpins() {
     //byte ctrlindexdn = conf.shutters[s].downpin / 16;
     //byte downpin = conf.shutters[s].downpin - 16*ctrlindexdn;
 
-    onoff[ctrlindexlo].setPWM(uppin, 0, 4096);
+    onoff[ctrlindexlo].setPWM(lopin, 0, 4096);
 
   }
 
