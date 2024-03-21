@@ -13,25 +13,31 @@
 #include "shutters.h"
 #include "fans.h"
 #include <PCF8574.h>
+#include "Version.h"
+#include "ControllerName.h"
 
 
 
 byte id = 0x98;
-String idString = "upstairs-lights";
+String idString = CONTROLLER_NAME;
 
 IPAddress server(192,168,91,215);
 
 String metricsTopic = "metrics/";
 
-Adafruit_PWMServoDriver pwm[] = {Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
-Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
-PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
+Adafruit_PWMServoDriver pwm[4];
+//{Adafruit_PWMServoDriver(0x48), Adafruit_PWMServoDriver(0x44)};
+Adafruit_PWMServoDriver onoff[4];
+//{Adafruit_PWMServoDriver(0x41)};
+PCF8574 pcf[8];
+//{PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
 
 static bool eth_connected = false;
 WiFiClient ethClient;
 PubSubClient mclient(ethClient);
 
+bool configsuccess = false;
 Conf conf;
 long last_irq_time[4];
 bool irq[4];
@@ -93,6 +99,21 @@ void IRAM_ATTR pcf_irq3() {
 }
 
 
+//function to read a hex value from a string of the type "0x4b" and return 0x4b
+byte readHex(String str) {
+  byte val = 0;
+  for (byte i=0; i<str.length(); i++) {
+    char c = str.charAt(i);
+    if (c >= '0' && c <= '9') {
+      val = val * 16 + c - '0';
+    } else if (c >= 'a' && c <= 'f') {
+      val = val * 16 + c - 'a' + 10;
+    } else if (c >= 'A' && c <= 'F') {
+      val = val * 16 + c - 'A' + 10;
+    }
+  }
+  return val;
+}
 
 
 void callback(char* topic, byte* payload, unsigned int length);
@@ -134,34 +155,6 @@ void setup(void) {
 
 
 
-  for (byte i=0; i < 2; i++) {
-    Serial.println(i);
-    pwm[i].begin();
-    pwm[i].setPWMFreq(1000);
-  }
-
-  for (byte i=0; i < 1; i++) {
-    Serial.println(i);
-    onoff[i].begin();
-    onoff[i].setPWMFreq(100);
-  }
-
-  for (byte c=0; c<4; c++) {
-    pcf[c].begin();
-    for (byte p=0; p<8; p++) {
-      pcf[c].write(p, 1);
-    }
-  }
-  pinMode(0, INPUT_PULLUP);
-  pinMode(1, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(32, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
-  attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
-  attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
-  attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
-
-
   metricsTopic += idString;
   Serial.println(F("Setup done"));
   //request config on startup
@@ -201,53 +194,131 @@ void configure(String payload) {
   }
   publish_metric("config", "deserialize", "success");
 
+//Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
+//PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
 
-  conf.nrlights = jconf["l"].size();
-  for (byte i = 0; i < conf.nrlights; i++) {
-    if (jconf["l"][i]["t"] == 1) {
-      conf.lights[i].tempadj = true;
-    } else {
-      conf.lights[i].tempadj = false;
-    }
-    conf.lights[i].cpin = jconf["l"][i]["c"];
-    if (conf.lights[i].tempadj) {
-      conf.lights[i].wpin = jconf["l"][i]["w"];
+  conf.nrpwm = 0;
+  if (jconf.containsKey("pwm")) {
+    conf.nrpwm = jconf["pwm"].size();
+    for (byte ctrl=0; ctrl < jconf["pwm"].size(); ctrl++) {
+      pwm[ctrl] = Adafruit_PWMServoDriver(readHex(jconf["pwm"][ctrl]));
     }
   }
 
-  conf.nrshutters = jconf["s"].size();
-  for (byte i = 0; i < conf.nrshutters; i++) {
-    conf.shutters[i].uppin = jconf["s"][i]["u"];
-    conf.shutters[i].downpin = jconf["s"][i]["d"];
-    conf.shutters[i].time = jconf["s"][i]["t"];
-  }
-
-  conf.nrfans = jconf["f"].size();
-  for (byte i = 0; i < conf.nrfans; i++) {
-    conf.fans[i].hispdpin = jconf["f"][i]["h"];
-    conf.fans[i].lowspdpin = jconf["f"][i]["l"];
-  }
-
-  conf.nrbutt = jconf["b"].size();
-  //Serial.println(conf.nrbutt);
-  for (byte i = 0; i < conf.nrbutt; i++) {
-
-    conf.bmaps[i].pin = jconf["b"][i]["p"];
-    conf.bmaps[i].light = jconf["b"][i]["l"];
-    conf.bmaps[i].fan = jconf["b"][i]["f"];
-    conf.bmaps[i].shutterup = jconf["b"][i]["su"];
-    conf.bmaps[i].shutterdown = jconf["b"][i]["sd"];
-    conf.bmaps[i].nrdev = jconf["b"][i]["d"].size();
-    for (byte j = 0; j < conf.bmaps[i].nrdev; j++) {
-      conf.bmaps[i].devices[j]=jconf["b"][i]["d"][j];
+  conf.nronoff = 0;
+  if (jconf.containsKey("onoff")) {
+    conf.nronoff = jconf["onoff"].size();
+    for (byte ctrl=0; ctrl < jconf["onoff"].size(); ctrl++) {
+      publish_metric("log", "onoff", String(readHex(jconf["onoff"][ctrl])));
+      onoff[ctrl] = Adafruit_PWMServoDriver(readHex(jconf["onoff"][ctrl]));
     }
   }
+
+  conf.nrpcf = 0;
+  if (jconf.containsKey("pcf")) {
+    conf.nrpcf = jconf["pcf"].size();
+    for (byte ctrl=0; ctrl < jconf["pcf"].size(); ctrl++) {
+      pcf[ctrl] = PCF8574(readHex(jconf["pcf"][ctrl]));
+    }
+  }
+
+  conf.nrlights = 0;
+  if (jconf.containsKey("lights")) {
+    conf.nrlights = jconf["lights"].size();
+
+    for (byte i = 0; i < conf.nrlights; i++) {
+      if (jconf["lights"][i]["tempadjustable"] == 1) {
+        conf.lights[i].tempadj = true;
+      } else {
+        conf.lights[i].tempadj = false;
+      }
+      conf.lights[i].cpin = jconf["lights"][i]["cold_pin"];
+      if (conf.lights[i].tempadj) {
+        conf.lights[i].wpin = jconf["lights"][i]["warm_pin"];
+      }
+    }
+  }
+
+  conf.nrshutters = 0;
+  if (jconf.containsKey("shutters")) {
+    conf.nrshutters = jconf["shutters"].size();
+    for (byte i = 0; i < conf.nrshutters; i++) {
+      conf.shutters[i].uppin = jconf["shutters"][i]["up_pin"];
+      conf.shutters[i].downpin = jconf["shutters"][i]["down_pin"];
+      conf.shutters[i].time = jconf["shutters"][i]["travel_time"];
+    }
+  }
+
+  conf.nrfans = 0;
+  if (jconf.containsKey("fans")) {
+    conf.nrfans = jconf["fans"].size();
+    for (byte i = 0; i < conf.nrfans; i++) {
+      conf.fans[i].hispdpin = jconf["fans"][i]["high_speed_pin"];
+      conf.fans[i].lowspdpin = jconf["fans"][i]["low_speed_pin"];
+    }
+  }
+
+  conf.nrbutt = 0;
+  if (jconf.containsKey("buttons")) {
+    conf.nrbutt = jconf["buttons"].size();
+    //Serial.println(conf.nrbutt);
+    for (byte i = 0; i < conf.nrbutt; i++) {
+
+      conf.bmaps[i].pin = jconf["buttons"][i]["p"];
+      conf.bmaps[i].light = jconf["buttons"][i]["l"];
+      conf.bmaps[i].fan = jconf["buttons"][i]["f"];
+      conf.bmaps[i].shutterup = jconf["buttons"][i]["su"];
+      conf.bmaps[i].shutterdown = jconf["buttons"][i]["sd"];
+      conf.bmaps[i].nrdev = jconf["buttons"][i]["d"].size();
+      for (byte j = 0; j < conf.bmaps[i].nrdev; j++) {
+        conf.bmaps[i].devices[j]=jconf["buttons"][i]["d"][j];
+      }
+    }
+  }
+  
+  if (conf.nrbutt > 0 or conf.nrlights > 0 or conf.nrshutters > 0 or conf.nrfans > 0) {
+    configsuccess = true;
+    publish_metric("config", "accepted", String(1));
+    //write config to eeprom
+    //i suspect issues with the eeprom
+    //EEPROM.put(0, conf);
+  } else {
+    configsuccess = false;
+    publish_metric("config", "accepted", String(0));
+  }
+
+  for (byte i=0; i < conf.nrpwm; i++) {
+    Serial.println(i);
+    pwm[i].begin();
+    //int rndfreq = rand() % 601 + 1000;
+    pwm[i].setPWMFreq(1200);
+  }
+
+  for (byte i=0; i < conf.nronoff; i++) {
+    Serial.println(i);
+    onoff[i].begin();
+    onoff[i].setPWMFreq(100);
+  }
+
+  for (byte c=0; c < conf.nrpcf; c++) {
+    pcf[c].begin();
+    for (byte p=0; p<8; p++) {
+      pcf[c].write(p, 1);
+    }
+  }
+  if (conf.nrpcf > 0) {
+    pinMode(0, INPUT_PULLUP);
+    pinMode(1, INPUT_PULLUP);
+    pinMode(3, INPUT_PULLUP);
+    pinMode(32, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
+    attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
+    attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
+    attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
+  }
+
+
   pinsset = false;
-  publish_metric("config", "accepted", String(1));
-  //write config to eeprom
-  //i suspect issues with the eeprom
-  //EEPROM.put(0, conf);
-
 }
 
 
@@ -392,19 +463,15 @@ void setpins() {
     //digitalWrite(conf.shutters[s].downpin, LOW);
   }
 
-//  for (byte f = 0; f < conf.nrfans; f++) {
-//    //Serial.print("setting pin ");
-//    //Serial.print(conf.fans[f].hispdpin);
-//    //Serial.println(" as output");
-//    //Serial.print("setting pin ");
-//    //Serial.print(conf.fans[f].lowspdpin);
-//    //Serial.println(" as output");
-//
-//    pinMode(conf.fans[f].lowspdpin, OUTPUT);
-//    pinMode(conf.fans[f].hispdpin, OUTPUT);
-//    digitalWrite(conf.fans[f].lowspdpin, LOW);
-//    digitalWrite(conf.fans[f].hispdpin, LOW);
-//  }
+  for (byte f = 0; f < conf.nrfans; f++) {
+    byte ctrlindexlo = conf.fans[f].lowspdpin / 16;
+    byte lopin = conf.fans[f].lowspdpin - 16*ctrlindexlo;
+    //byte ctrlindexdn = conf.shutters[s].downpin / 16;
+    //byte downpin = conf.shutters[s].downpin - 16*ctrlindexdn;
+
+    onoff[ctrlindexlo].setPWM(lopin, 0, 4096);
+
+  }
 
 
 
@@ -458,13 +525,19 @@ void loop(void) {
     for (byte p; p < 4; p++) {
       if (irq[p] and millis() - last_irq_time[p] >= 5) {
         readpcf(p);
-        //publish_metric("log", "handling_irq", String(p));
+        publish_metric("log", "handling_irq", String(p));
         irq[p] = false;
       }
     }
-    handlebuttons();
-    applyintensities();
-    controlshutters();
+    if (conf.nrbutt > 0) {
+      handlebuttons();
+    }
+    if (conf.nrlights > 0) {
+      applyintensities();
+    }
+    if (conf.nrshutters > 0) {
+      controlshutters();
+    }
   }
 
   //report current state every 60s
@@ -472,6 +545,9 @@ void loop(void) {
     //publish_metric("log", "conf_nrlights", String(conf.nrlights));
     //publish_metric("log", "conf_nrfans", String(conf.nrfans));
     //publish_metric("log", "conf_nrshutters", String(conf.nrshutters));
+    
+    publish_metric("log", "version", String(VERSION));
+    publish_metric("log", "build", String(BUILD_TIMESTAMP));
 
 
     for (byte l = 0; l < conf.nrlights; l++) {
