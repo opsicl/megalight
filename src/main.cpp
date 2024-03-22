@@ -179,7 +179,7 @@ void publish_metric (String metric, String tag, String value) {
 
 void configure(String payload) {
 
-  DynamicJsonDocument jconf(4096);
+  DynamicJsonDocument jconf(8192);
   DeserializationError error = deserializeJson(jconf, payload);
 
   // Test if parsing succeeds.
@@ -328,7 +328,7 @@ void applystoredconfig() {
 
 
 boolean reconnect() {
-  mclient.setBufferSize(4096);
+  mclient.setBufferSize(8192);
   mclient.setServer(server, 1883);
   mclient.setCallback(callback);
 
