@@ -1,6 +1,6 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <PCF8574.h>
-int pltoint(byte* payload, unsigned int length);
+
 void publish_metric (String metric, String tag, String value);
 
 struct light {

@@ -179,11 +179,9 @@ void publish_metric (String metric, String tag, String value) {
 
 void configure(String payload) {
 
-  //Serial.println(F("Got reconfiguration request"));
-  //publish_metric("config", "received", String(1));
-  //StaticJsonDocument<256> jconf;
   DynamicJsonDocument jconf(4096);
   DeserializationError error = deserializeJson(jconf, payload);
+
   // Test if parsing succeeds.
   if (error) {
     Serial.print(F("deserializeJson() failed: "));
@@ -192,10 +190,8 @@ void configure(String payload) {
 
     return;
   }
-  publish_metric("config", "deserialize", "success");
 
-//Adafruit_PWMServoDriver onoff[] = {Adafruit_PWMServoDriver(0x41)};
-//PCF8574 pcf[4] {PCF8574(0x20), PCF8574(0x21),PCF8574(0x22), PCF8574(0x23)};
+  publish_metric("config", "deserialize", "success");
 
   conf.nrpwm = 0;
   if (jconf.containsKey("pwm")) {
@@ -214,13 +210,32 @@ void configure(String payload) {
     }
   }
 
+////PCFstart
   conf.nrpcf = 0;
+  byte irqpins[8];
   if (jconf.containsKey("pcf")) {
     conf.nrpcf = jconf["pcf"].size();
     for (byte ctrl=0; ctrl < jconf["pcf"].size(); ctrl++) {
-      pcf[ctrl] = PCF8574(readHex(jconf["pcf"][ctrl]));
+      pcf[ctrl] = PCF8574(readHex(jconf["pcf"][ctrl]["addr"]));
+      irqpins[ctrl] = jconf["pcf"][ctrl]["irqpin"];
+      pinMode(irqpins[ctrl], INPUT_PULLUP);
     }
   }
+
+  for (byte c=0; c < conf.nrpcf; c++) {
+    pcf[c].begin();
+    for (byte p=0; p<8; p++) {
+      pcf[c].write(p, 1);
+    }
+  }
+  if (conf.nrpcf > 0) {
+    attachInterrupt(digitalPinToInterrupt(irqpins[0]), pcf_irq0, FALLING);
+    attachInterrupt(digitalPinToInterrupt(irqpins[1]), pcf_irq1, FALLING);
+    attachInterrupt(digitalPinToInterrupt(irqpins[2]), pcf_irq2, FALLING);
+    attachInterrupt(digitalPinToInterrupt(irqpins[3]), pcf_irq3, FALLING);
+  }
+////PCFend
+
 
   conf.nrlights = 0;
   if (jconf.containsKey("lights")) {
@@ -261,9 +276,7 @@ void configure(String payload) {
   conf.nrbutt = 0;
   if (jconf.containsKey("buttons")) {
     conf.nrbutt = jconf["buttons"].size();
-    //Serial.println(conf.nrbutt);
     for (byte i = 0; i < conf.nrbutt; i++) {
-
       conf.bmaps[i].pin = jconf["buttons"][i]["p"];
       conf.bmaps[i].light = jconf["buttons"][i]["l"];
       conf.bmaps[i].fan = jconf["buttons"][i]["f"];
@@ -274,6 +287,7 @@ void configure(String payload) {
         conf.bmaps[i].devices[j]=jconf["buttons"][i]["d"][j];
       }
     }
+
   }
   
   if (conf.nrbutt > 0 or conf.nrlights > 0 or conf.nrshutters > 0 or conf.nrfans > 0) {
@@ -298,23 +312,6 @@ void configure(String payload) {
     Serial.println(i);
     onoff[i].begin();
     onoff[i].setPWMFreq(100);
-  }
-
-  for (byte c=0; c < conf.nrpcf; c++) {
-    pcf[c].begin();
-    for (byte p=0; p<8; p++) {
-      pcf[c].write(p, 1);
-    }
-  }
-  if (conf.nrpcf > 0) {
-    pinMode(0, INPUT_PULLUP);
-    pinMode(1, INPUT_PULLUP);
-    pinMode(3, INPUT_PULLUP);
-    pinMode(32, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(3), pcf_irq0, FALLING);
-    attachInterrupt(digitalPinToInterrupt(0), pcf_irq1, FALLING);
-    attachInterrupt(digitalPinToInterrupt(32), pcf_irq2, FALLING);
-    attachInterrupt(digitalPinToInterrupt(1), pcf_irq3, FALLING);
   }
 
 
@@ -422,19 +419,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void setpins() {
-//  for (byte l = 0; l < conf.nrlights; l++) {
-//    if (conf.lights[l].tempadj) {
-//      //Serial.print("setting pin ");
-//      //Serial.print(conf.lights[l].wpin);
-//      //Serial.println(" as output");
-//      pinMode(conf.lights[l].wpin, OUTPUT);
-//    }
-//    pinMode(conf.lights[l].cpin, OUTPUT);
-//    //Serial.print("setting pin ");
-//    //Serial.print(conf.lights[l].cpin);
-//    //Serial.println(" as output");
-//
-//  }
+
   for (byte b = 0; b < conf.nrbutt; b++) {
     //Serial.print("setting pin ");
     //Serial.print(conf.bmaps[b].pin);
@@ -444,12 +429,6 @@ void setpins() {
   }
 
   for (byte s = 0; s < conf.nrshutters; s++) {
-    //Serial.print("setting pin ");
-    //Serial.print(conf.shutters[s].uppin);
-    //Serial.println(" as output");
-    //Serial.print("setting pin ");
-    //Serial.print(conf.shutters[s].downpin);
-    //Serial.println(" as output");
 
     byte ctrlindexup = conf.shutters[s].uppin / 16;
     byte uppin = conf.shutters[s].uppin - 16*ctrlindexup;
@@ -459,33 +438,19 @@ void setpins() {
     onoff[ctrlindexup].setPWM(uppin, 0, 4096);
     onoff[ctrlindexdn].setPWM(downpin, 0, 4096);
 
-    //digitalWrite(conf.shutters[s].uppin, LOW);
-    //digitalWrite(conf.shutters[s].downpin, LOW);
   }
 
   for (byte f = 0; f < conf.nrfans; f++) {
+
     byte ctrlindexlo = conf.fans[f].lowspdpin / 16;
     byte lopin = conf.fans[f].lowspdpin - 16*ctrlindexlo;
-    //byte ctrlindexdn = conf.shutters[s].downpin / 16;
-    //byte downpin = conf.shutters[s].downpin - 16*ctrlindexdn;
-
     onoff[ctrlindexlo].setPWM(lopin, 0, 4096);
 
   }
 
-
-
   pinsset = true;
+
 }
-
-int pltoint(byte* payload, unsigned int length) {
-  char temp[length+1];
-
-  strncpy(temp, (char*)payload, length);
-  //temp[length] = '\0';
-  return atoi(temp);
-}
-
 
 void loop(void) { 
 
@@ -508,7 +473,6 @@ void loop(void) {
     mclient.loop();
   }
 
-
   //alow 5s to receive config, else use the locally stored one
   if (conf.nrlights == 0 and conf.nrshutters == 0 and conf.nrfans == 0 and conf.nrbutt == 0)  {
     if (millis() - cfgTime > 5000) {
@@ -520,7 +484,6 @@ void loop(void) {
       }
   }
   
-
   else {
     for (byte p; p < 4; p++) {
       if (irq[p] and millis() - last_irq_time[p] >= 5) {

@@ -11,7 +11,6 @@ void stop_shutter(byte shutter) {
   byte downpin = conf.shutters[shutter].downpin - 16*ctrlindexdn;
 
   //publish the achieved state
-  publish_metric("log","stop_shutter",String(shutter));
   publish_metric("shutters", String(shutter)+"/open", String(shutcurstate[shutter]));
 
   //digitalWrite(conf.shutters[shutter].uppin, LOW);
@@ -41,7 +40,6 @@ void setshutter(String shutterattr, String payload) {
 
   String attr = shutterattr.substring(attrindex + 1, attrindex + 5);
   //Serial.println(attr);
-  publish_metric("log","shutters_attr",String(shutter) + " " + attr);
 
   if (attr == "open") {
     stop_shutter(shutter);
