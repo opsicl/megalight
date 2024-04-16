@@ -206,13 +206,13 @@ void lightsbutton(byte butt) {
         in[l] = 0;
       }
       else {
-        if (li[l] == 0) {
+        //if (li[l] == 0) {
           in[l] = 4095;
           li[l] = 4095;
-        }
-        else {
-          in[l] = li[l];
-        }
+        //}
+        //else {
+        //  in[l] = li[l];
+        //}
       }
     }
   }
