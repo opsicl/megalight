@@ -43,7 +43,7 @@ void handlebutton(byte butt) {
   }
 
   //long press
-  if (press  and (millis() - lastPressTime[butt] > 400)) {
+  if (press  and (millis() - lastPressTime[butt] > 700)) {
     if (not longpressing[butt]) {
       publish_metric("button", String(conf.bmaps[butt].pin)+"/longpress", "1");
     }
@@ -74,7 +74,7 @@ void handlebutton(byte butt) {
     shortpress[butt] = true;
 
     //double short press
-    if (millis() - lastShortPress[butt] < 400) {
+    if (millis() - lastShortPress[butt] < 500) {
       //Serial.print("Double press on: ");
       //Serial.println(butt);
       doublepress[butt] = true;
